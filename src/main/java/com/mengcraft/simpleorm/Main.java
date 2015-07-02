@@ -22,11 +22,31 @@ public class Main extends JavaPlugin {
             getConfig().set("enables", enalbes);
         }
         for (String name : enalbes) {
-            setup(name);
+             config(name);
+        }
+    }
+    
+    @Override
+    public void onEnable() {
+        List<String> enalbes = getConfig().getStringList("enables");
+        for (String name : enalbes) {
+             enable(name);
         }
     }
 
-    private void setup(String name) {
+    private void enable(String in) {
+        try {
+            EbeanHandler handler = manager.getHandler(in);
+            if (!handler.isInitialize()) {
+                handler.initialize(getClassLoader());
+            }
+            getLogger().info("Source " + in + " enable done!");
+        } catch (Exception e) {
+            getLogger().info("Source " + in + " " + e.getMessage());
+        }
+    }
+
+    private void config(String name) {
         String driver   = getConfig().getString(DS + name + DR);
         String url      = getConfig().getString(DS + name + UR);
         String userName = getConfig().getString(DS + name + UN);
