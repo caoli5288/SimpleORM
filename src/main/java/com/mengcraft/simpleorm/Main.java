@@ -65,7 +65,6 @@ public class Main extends JavaPlugin {
             getConfig().set(DS + name + UR, Default.URL);
             getConfig().set(DS + name + UN, Default.USER_NAME);
             getConfig().set(DS + name + PW, Default.PASSWORD);
-            getConfig().set(DS + name + PW, Default.PASSWORD);
             
             saveConfig();
         }
