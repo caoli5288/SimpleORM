@@ -37,6 +37,9 @@ public class EbeanHandler {
         if (userName == null || password == null) {
             throw new NullPointerException("Not configured!");
         }
+        if (list.size() < 1) {
+            throw new NullPointerException("Entity class list empty!");
+        }
         DataSourceConfig dsc = new DataSourceConfig();
         dsc.setDriver(driver);
         dsc.setUrl(url);
