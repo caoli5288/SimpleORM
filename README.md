@@ -1,60 +1,59 @@
 # SimpleORM
-A Bukkit plugin provides a central ORM Manager.
+A Bukkit plugin provides a central ORM Manager. It have no reload issue from
+Bukkit's build-in ORM support.
 
 # Usage
 Put it into your server's plugin folder, and start your server. 
-It will generate default config file automatic.
-```yaml
-enables:
-- default
-dataSource:
-  default:
-    driver: com.mysql.jdbc.Driver
-    url: jdbc:mysql://localhost/db
-    userName: testUserName
-    password: testPassword
-```
-Edit or add your own config entry follow this format.
 
 # Developer
-If you want to use this library in your own plugin. 
+If you want to use this library in your own plugin. code your main
+class like this.
 ```java
 public class MyPlugin extend JavaPlugin {
 
+    private final EbeanManager manager = EbeanManager.DEFAULT;
+    
     @Override
     public void onLoad() {
-        EbeanManager manager = EbeanManager.DEFAULT;
-        // Replace 'default' with your config.
-        EbeanHandler handler = manager.getHandler("default");
-        // Add your entity class.
-        handler.addClass(MyClass.class);
+        EbeanHandler handler = manager.getHandler(this);
+        // Define your entity class.
+        handler.define(MyClass.class);
+        handler.define(MyOther.class);
         ...
     }
     
     @Override
     public void onEnable() {
-        EbeanManager manager = EbeanManager.DEFAULT;
-        EbeanHandler handler = manager.getHandler("default");
+        EbeanHandler handler = manager.getHandler(this);
         if (!handler.isInitialize) {
             try {
-                handler.initialize(getClassLoader());
+                handler.initialize();
             } catch(Exception e) {
-                getLogger().warning("DataSource not configured");
-                setEnable(false);
+                // Do what you want to do.
             }
         }
+        // This funtion will inject into Bukkit's build-in ORM support.
+        handler.register();
+        EbeanServer server = this.getDatabase();
+        // EbeanServer server = handler.getServer();
         ...
     }
     
     public void function() {
-        EbeanManager manager = EbeanManager.DEFAULT;
-        EbeanHandler handler = manager.getHandler("default");
-        MyClass my = handler.getServer().find(MyClass.class)
-                                        .where()
-                                        .eq("name", "zmy")
-                                        .findUnique();
+        MyClass my = getDatabase.find(MyClass.class)
+                                .where()
+                                .eq("name", "zmy")
+                                .findUnique();
         System.out.print(my.getName());
         ...
 }
-        
+```
+Configure field will create automatic in your plguin's default config file.
+Like this.
+```yaml
+dataSource:
+  driver: com.mysql.jdbc.Driver
+  url: jdbc:mysql://localhost/database
+  userName: username
+  password: password
 ```
