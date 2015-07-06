@@ -7,7 +7,7 @@ Put it into your server's plugin folder, and start your server.
 
 # Developer
 If you want to use this library in your own plugin. code your main
-class like this.
+class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
 ```java
 public class MyPlugin extend JavaPlugin {
 
@@ -46,6 +46,22 @@ public class MyPlugin extend JavaPlugin {
                                 .findUnique();
         System.out.print(my.getName());
         ...
+}
+```
+Code your entity class like this. See More [Example](https://github.com/ebean-orm/avaje-ebeanorm-examples/tree/master/a-basic/src/main/java/org/example/domain).
+```java
+@Entity
+@Table(name = "o_table")
+public class MyClass {
+    
+    @Id
+    private int id;
+    
+    @Column(length=65535)
+    private String name;
+    
+    // Put getter and setter.
+    ...
 }
 ```
 Configure field will create automatic in your plguin's default config file.
