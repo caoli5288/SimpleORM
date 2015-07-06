@@ -3,6 +3,8 @@ package com.mengcraft.simpleorm;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.plugin.java.JavaPlugin;
+
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
 import com.avaje.ebean.config.DataSourceConfig;
@@ -10,9 +12,11 @@ import com.avaje.ebean.config.ServerConfig;
 
 public class EbeanHandler {
 
-    private final String name;
+    private final ReflectUtil util;
     private final List<Class> list;
-
+    
+    private String name;
+    
     private String driver;
     private String url;
     private String userName;
@@ -21,26 +25,52 @@ public class EbeanHandler {
     private boolean initialize;
 
     private EbeanServer server;
+    private JavaPlugin proxy;
 
-    public EbeanHandler(String name) {
-        this.name = name;
-        this.list = new ArrayList<Class>();
+    public EbeanHandler(JavaPlugin proxy) {
+        this.proxy = proxy;
+        this.name = proxy.getName();
+        this.util = ReflectUtil.UTIL;
+        this.list = new ArrayList<>();
+    }
+    
+    @Override
+    public String toString() {
+        return name + "," + url + "," + userName + "," + initialize;
+    }
+    
+    public void define(Class in) {
+        if (!initialize && !list.contains(in)) {
+            list.add(in);
+        }
+    }
+    
+    public void register() {
+        if (!initialize) {
+            throw new RuntimeException("Not initialize!");
+        }
+        if (proxy.getDatabase() != server) {
+            try {
+                util.register(proxy, server);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    public void initialize(ClassLoader in) throws Exception {
-        if (isInitialize()) {
+    public void initialize() throws Exception {
+        if (initialize) {
             throw new RuntimeException("Already initialize!");
         }
-        if (driver == null || url == null) {
-            throw new NullPointerException("Not configured!");
-        }
-        if (userName == null || password == null) {
+        if (driver == null || url == null || userName == null 
+                || password == null) {
             throw new NullPointerException("Not configured!");
         }
         if (list.size() < 1) {
-            throw new NullPointerException("Entity class list empty!");
+            throw new RuntimeException("Not define entity class!");
         }
         DataSourceConfig dsc = new DataSourceConfig();
+        
         dsc.setDriver(driver);
         dsc.setUrl(url);
         dsc.setUsername(userName);
@@ -52,28 +82,19 @@ public class EbeanHandler {
 
         sc.setDdlGenerate(true);
         sc.setDdlRun(true);
-
-        for (Class<?> line : list) {
-            sc.addClass(line);
-        }
-        ClassLoader loader = Thread.currentThread()
-                                   .getContextClassLoader();
         
-        Thread.currentThread().setContextClassLoader(in);
+        ClassLoader loader = Thread.currentThread()
+                                 .getContextClassLoader();
+        
+        Thread.currentThread().setContextClassLoader(util.loader(proxy));
         server = EbeanServerFactory.create(sc);
         Thread.currentThread().setContextClassLoader(loader);
-        
+
         initialize = true;
     }
 
     public String getName() {
         return name;
-    }
-    
-    public void addClass(Class<?> in) {
-        if (!list.contains(in)) {
-            list.add(in);
-        }
     }
 
     public void setUrl(String url) {
@@ -89,7 +110,7 @@ public class EbeanHandler {
     }
 
     public EbeanServer getServer() {
-        if (!isInitialize()) {
+        if (!initialize) {
             throw new NullPointerException("Not initialized!");
         }
         return server;
@@ -101,6 +122,15 @@ public class EbeanHandler {
 
     public boolean isInitialize() {
         return initialize;
+    }
+
+    public JavaPlugin getProxy() {
+        return proxy;
+    }
+
+    public EbeanHandler setProxy(JavaPlugin in) {
+        this.proxy = in;
+        return this;
     }
 
 }
