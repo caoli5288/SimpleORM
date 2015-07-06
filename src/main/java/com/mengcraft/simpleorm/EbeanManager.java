@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,6 +24,10 @@ public class EbeanManager {
     private EbeanHandler create(String name) {
         map.put(name, new EbeanHandler(name));
         return getHandler(name);
+    }
+    
+    public Collection<EbeanHandler> handers() {
+        return map.values();
     }
 
 }
