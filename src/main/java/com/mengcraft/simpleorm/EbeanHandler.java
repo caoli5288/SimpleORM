@@ -34,13 +34,7 @@ public class EbeanHandler {
 
     public EbeanHandler(JavaPlugin proxy) {
         if (manager.hasHandler(proxy)) {
-            EbeanHandler handler = manager.getHandler(proxy);
-            this.driver = handler.driver;
-            this.url = handler.url;
-            this.userName = handler.userName;
-            this.password = handler.password;
-            this.initialize = handler.initialize;
-            this.server = handler.server;
+            throw new RuntimeException("Already in manager!");
         }
         this.proxy = proxy;
         this.name = proxy.getName();
