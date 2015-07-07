@@ -91,18 +91,11 @@ public class EbeanHandler {
             proxy.getLogger().info("Tables already exists!");
         } catch (Exception e) {
             proxy.getLogger().info(e.getMessage());
-            a();
-            proxy.getLogger().info("Create Tables done!");
-        }
-    }
-
-    private void a() {
-        try {
+            proxy.getLogger().info("Start create tables, wait...");
             SpiEbeanServer serv = (SpiEbeanServer) server;
             DdlGenerator gen = serv.getDdlGenerator();
             gen.runScript(false, gen.generateCreateDdl());
-        } catch (Exception e) {
-            proxy.getLogger().warning(e.getMessage());
+            proxy.getLogger().info("Create Tables done!");
         }
     }
 
