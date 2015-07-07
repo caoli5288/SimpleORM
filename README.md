@@ -3,7 +3,8 @@ A Bukkit plugin provides a central ORM Manager. It have no reload issue from
 Bukkit's build-in ORM support.
 
 # Usage
-Put it into your server's plugin folder, and start your server. 
+Put it into your server's plugin folder, and start your server,
+or package into your own plugin(not recommend).
 
 # Developer
 If you want to use this library in your own plugin. code your main
@@ -14,18 +15,27 @@ public class MyPlugin extend JavaPlugin {
     private final EbeanManager manager = EbeanManager.DEFAULT;
     
     @Override
-    public void onLoad() {
-        EbeanHandler handler = manager.getHandler(this);
-        // Define your entity class.
-        handler.define(MyClass.class);
-        handler.define(MyOther.class);
-        ...
-    }
-    
-    @Override
     public void onEnable() {
+        /*
+         * If you dont whan to use manager object, follow this
+         * code. NOT RECOMMEND.
+         *
+         * EbeanHandler handler = new EbeanHandler();
+         * handler.setDriver("com.mysql.jdbc.Driver");
+         * handler.setUrl("jdbc:mysql://localhost:3306/database");
+         * handler.setUserName("userName");
+         * handler.setPassword("password");
+         *
+         * Use manager object will gen and read config field automatic.
+         * and will store handler into a map, your can get it even
+         * your plugin reload.
+         *
+         */
         EbeanHandler handler = manager.getHandler(this);
-        if (!handler.isInitialize) {
+
+        if (!handler.isInitialize()) {
+            handler.define(MyClass.class);
+            handler.define(MyOther.class);
             try {
                 handler.initialize();
             } catch(Exception e) {
@@ -33,7 +43,9 @@ public class MyPlugin extend JavaPlugin {
             }
         }
         // This funtion will inject into Bukkit's build-in ORM support.
-        handler.register();
+        handler.reflect();
+        // This funtion will try to create not exists talbes.
+        handler.install();
         EbeanServer server = this.getDatabase();
         // EbeanServer server = handler.getServer();
         ...
@@ -57,7 +69,7 @@ public class MyClass {
     @Id
     private int id;
     
-    @Column(length=65535)
+    @Column
     private String name;
     
     // Put getter and setter.
