@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.mengcraft</groupId>
   <artifactId>simpleorm</artifactId>
-  <version>0.1.2</version>
+  <version>0.1.3</version>
   <repositories>
     <repository>
       <id>bukkit-repo</id>
