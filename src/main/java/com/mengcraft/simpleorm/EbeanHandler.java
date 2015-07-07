@@ -102,7 +102,7 @@ public class EbeanHandler {
             DdlGenerator gen = serv.getDdlGenerator();
             gen.runScript(false, gen.generateCreateDdl());
         } catch (Exception e) {
-            proxy.getLogger().info(e.getMessage());
+            proxy.getLogger().warning(e.getMessage());
         }
     }
 
