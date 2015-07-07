@@ -18,10 +18,6 @@ public class EbeanManager {
         this.map = new HashMap<>();
     }
 
-    public Collection<EbeanHandler> handers() {
-        return map.values();
-    }
-
     public EbeanHandler getHandler(JavaPlugin proxy) {
         String name = proxy.getName();
         return map.get(name) != null ?
@@ -72,10 +68,19 @@ public class EbeanManager {
                     , Default.PASSWORD);
             proxy.saveConfig();
         }
-        
-        map.put(proxy.getName(), out);
-        
         return out;
+    }
+
+    Collection<EbeanHandler> handers() {
+        return map.values();
+    }
+
+    boolean hasHandler(JavaPlugin proxy) {
+        return map.get(proxy.getName()) != null;
+    }
+
+    void setHandler(JavaPlugin proxy, EbeanHandler handler) {
+        map.put(proxy.getName(), handler);
     }
 
 }

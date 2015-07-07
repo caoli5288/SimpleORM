@@ -15,6 +15,8 @@ import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
 
+    private final EbeanManager manager = EbeanManager.DEFAULT;
+    
     private final ReflectUtil util;
     private final List<Class> list;
     
@@ -31,10 +33,20 @@ public class EbeanHandler {
     private JavaPlugin proxy;
 
     public EbeanHandler(JavaPlugin proxy) {
+        if (manager.hasHandler(proxy)) {
+            EbeanHandler handler = manager.getHandler(proxy);
+            this.driver = handler.driver;
+            this.url = handler.url;
+            this.userName = handler.userName;
+            this.password = handler.password;
+            this.initialize = handler.initialize;
+            this.server = handler.server;
+        }
         this.proxy = proxy;
         this.name = proxy.getName();
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
+        this.manager.setHandler(proxy, this);
     }
     
     @Override
@@ -65,9 +77,13 @@ public class EbeanHandler {
         if (!initialize) {
             throw new RuntimeException("Not initialize!");
         }
-        SpiEbeanServer serv = (SpiEbeanServer) server;
-        DdlGenerator gen = serv.getDdlGenerator();
-        gen.runScript(true, gen.generateDropDdl());
+        try {
+            SpiEbeanServer serv = (SpiEbeanServer) server;
+            DdlGenerator gen = serv.getDdlGenerator();
+            gen.runScript(true, gen.generateDropDdl());
+        } catch (Exception e) {
+            proxy.getLogger().info(e.getMessage());
+        }
     }
     
     public void install() {
@@ -80,10 +96,19 @@ public class EbeanHandler {
             }
             proxy.getLogger().info("Tables already exists!");
         } catch (Exception e) {
+            proxy.getLogger().info(e.getMessage());
+            a();
+            proxy.getLogger().info("Create Tables done!");
+        }
+    }
+
+    private void a() {
+        try {
             SpiEbeanServer serv = (SpiEbeanServer) server;
             DdlGenerator gen = serv.getDdlGenerator();
             gen.runScript(false, gen.generateCreateDdl());
-            proxy.getLogger().info("Create Tables done!");
+        } catch (Exception e) {
+            proxy.getLogger().info(e.getMessage());
         }
     }
 
