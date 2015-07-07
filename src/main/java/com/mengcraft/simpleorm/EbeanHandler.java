@@ -9,6 +9,9 @@ import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
 import com.avaje.ebean.config.DataSourceConfig;
 import com.avaje.ebean.config.ServerConfig;
+import com.avaje.ebean.config.dbplatform.SQLitePlatform;
+import com.avaje.ebeaninternal.api.SpiEbeanServer;
+import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
 
@@ -39,13 +42,13 @@ public class EbeanHandler {
         return name + "," + url + "," + userName + "," + initialize;
     }
     
-    public void define(Class in) {
+    public void define(Class<?> in) {
         if (!initialize && !list.contains(in)) {
             list.add(in);
         }
     }
     
-    public void register() {
+    public void reflect() {
         if (!initialize) {
             throw new RuntimeException("Not initialize!");
         }
@@ -55,6 +58,32 @@ public class EbeanHandler {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+    
+    public void uninstall() {
+        if (!initialize) {
+            throw new RuntimeException("Not initialize!");
+        }
+        SpiEbeanServer serv = (SpiEbeanServer) server;
+        DdlGenerator gen = serv.getDdlGenerator();
+        gen.runScript(true, gen.generateDropDdl());
+    }
+    
+    public void install() {
+        if (!initialize) {
+            throw new RuntimeException("Not initialize!");
+        }
+        try {
+            for (Class<?> line : list) {
+                server.find(line).findRowCount();
+            }
+            proxy.getLogger().info("Tables already exists!");
+        } catch (Exception e) {
+            SpiEbeanServer serv = (SpiEbeanServer) server;
+            DdlGenerator gen = serv.getDdlGenerator();
+            gen.runScript(false, gen.generateCreateDdl());
+            proxy.getLogger().info("Create Tables done!");
         }
     }
 
@@ -75,13 +104,21 @@ public class EbeanHandler {
         dsc.setUrl(url);
         dsc.setUsername(userName);
         dsc.setPassword(password);
-
+        
         ServerConfig sc = new ServerConfig();
+        
+        if (driver.contains("sqlite")) {
+            dsc.setIsolationLevel(8);
+            sc.setDatabasePlatform(new SQLitePlatform());
+            sc.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+        }
+        
         sc.setName(name);
         sc.setDataSourceConfig(dsc);
-
-        sc.setDdlGenerate(true);
-        sc.setDdlRun(true);
+        
+        for (Class<?> line : list) {
+            sc.addClass(line);
+        }
         
         ClassLoader loader = Thread.currentThread()
                                  .getContextClassLoader();
@@ -89,6 +126,7 @@ public class EbeanHandler {
         Thread.currentThread().setContextClassLoader(util.loader(proxy));
         server = EbeanServerFactory.create(sc);
         Thread.currentThread().setContextClassLoader(loader);
+        
 
         initialize = true;
     }
