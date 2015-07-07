@@ -102,12 +102,10 @@ public class EbeanHandler {
     public void initialize() throws Exception {
         if (initialize) {
             throw new RuntimeException("Already initialize!");
-        }
-        if (driver == null || url == null || userName == null 
+        } else if (driver == null || url == null || userName == null
                 || password == null) {
             throw new NullPointerException("Not configured!");
-        }
-        if (list.size() < 1) {
+        } else if (list.size() < 1) {
             throw new RuntimeException("Not define entity class!");
         }
         DataSourceConfig dsc = new DataSourceConfig();
@@ -133,7 +131,7 @@ public class EbeanHandler {
         }
         
         ClassLoader loader = Thread.currentThread()
-                                 .getContextClassLoader();
+                                   .getContextClassLoader();
         
         Thread.currentThread().setContextClassLoader(util.loader(proxy));
         server = EbeanServerFactory.create(sc);
