@@ -16,9 +16,7 @@ public class ReflectUtil {
     public void register(JavaPlugin proxy, EbeanServer in) 
             throws Exception {
         if (server == null) {
-            server = proxy.getClass()
-                         .getSuperclass()
-                         .getDeclaredField("ebean");
+            server = JavaPlugin.class.getDeclaredField("ebean");
             server.setAccessible(true);
         }
         server.set(proxy, in);
@@ -26,9 +24,7 @@ public class ReflectUtil {
     
     public ClassLoader loader(JavaPlugin in) throws Exception {
         if (loader == null) {
-            loader = in.getClass()
-                         .getSuperclass()
-                         .getDeclaredField("classLoader");
+            loader = JavaPlugin.class.getDeclaredField("classLoader");
             loader.setAccessible(true);
         }
         return (ClassLoader) loader.get(in);
