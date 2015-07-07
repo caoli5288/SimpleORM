@@ -4,7 +4,7 @@ Bukkit's build-in ORM support.
 
 # Usage
 Put it into your server's plugin folder, and start your server,
-or package into your own plugin(not recommend).
+or package source into your own plugin(not recommend).
 
 # Developer
 If you want to use this library in your own plugin. code your main
@@ -42,10 +42,13 @@ public class MyPlugin extend JavaPlugin {
                 // Do what you want to do.
             }
         }
-        // This funtion will inject into Bukkit's build-in ORM support.
+        // This function will inject into Bukkit's build-in 
+        // ORM support.
         handler.reflect();
-        // This funtion will try to create not exists talbes.
+        // This function will try to create not exists talbes.
         handler.install();
+        // Injected build-in method. Return initialized 
+        // Ebean server.
         EbeanServer server = this.getDatabase();
         // EbeanServer server = handler.getServer();
         ...
