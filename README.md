@@ -11,8 +11,6 @@ If you want to use this library in your own plugin. code your main
 class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
 ```java
 public class MyPlugin extend JavaPlugin {
-
-    private final EbeanManager manager = EbeanManager.DEFAULT;
     
     @Override
     public void onEnable() {
@@ -31,6 +29,10 @@ public class MyPlugin extend JavaPlugin {
          * your plugin reload.
          *
          */
+        // EbeanManager manager = EbeanManager.DEFAULT;
+        EbeanManager manager = getServer().getServicesManager()
+                .getRegistration(EbeanManager.class)
+                .getProvider();
         EbeanHandler handler = manager.getHandler(this);
 
         if (!handler.isInitialize()) {
