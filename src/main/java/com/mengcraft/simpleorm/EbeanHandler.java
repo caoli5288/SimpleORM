@@ -74,7 +74,7 @@ public class EbeanHandler {
         try {
             SpiEbeanServer serv = (SpiEbeanServer) server;
             DdlGenerator gen = serv.getDdlGenerator();
-            gen.runScript(true, gen.generateDropDdl());
+            gen.runScript(false, gen.generateDropDdl());
         } catch (Exception e) {
             proxy.getLogger().info(e.getMessage());
         }
@@ -177,7 +177,9 @@ public class EbeanHandler {
     }
 
     public EbeanHandler setProxy(JavaPlugin in) {
-        this.proxy = in;
+        if (this.proxy != in) {
+            this.proxy = in;
+        }
         return this;
     }
 
