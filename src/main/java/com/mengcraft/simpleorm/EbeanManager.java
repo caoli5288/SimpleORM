@@ -35,6 +35,10 @@ public class EbeanManager {
         return map.get(name);
     }
 
+    public void setHandler(JavaPlugin proxy, EbeanHandler handler) {
+        map.put(proxy.getName(), handler);
+    }
+
     private EbeanHandler load(JavaPlugin proxy) {
         EbeanHandler out = new EbeanHandler(proxy);
 
@@ -87,10 +91,6 @@ public class EbeanManager {
 
     boolean hasHandler(JavaPlugin proxy) {
         return map.get(proxy.getName()) != null;
-    }
-
-    void setHandler(JavaPlugin proxy, EbeanHandler handler) {
-        map.put(proxy.getName(), handler);
     }
 
 }
