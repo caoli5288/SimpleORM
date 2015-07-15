@@ -27,7 +27,7 @@ public class EbeanHandler {
     private String userName;
     private String password;
 
-    private boolean initialize;
+    private boolean initialized;
 
     private EbeanServer server;
     private JavaPlugin proxy;
@@ -45,17 +45,17 @@ public class EbeanHandler {
     
     @Override
     public String toString() {
-        return name + "," + url + "," + userName + "," + initialize;
+        return name + "," + url + "," + userName + "," + initialized;
     }
     
     public void define(Class<?> in) {
-        if (!initialize && !list.contains(in)) {
+        if (!initialized && !list.contains(in)) {
             list.add(in);
         }
     }
     
     public void reflect() {
-        if (!initialize) {
+        if (!initialized) {
             throw new RuntimeException("Not initialize!");
         }
         if (proxy.getDatabase() != server) {
@@ -68,7 +68,7 @@ public class EbeanHandler {
     }
     
     public void uninstall() {
-        if (!initialize) {
+        if (!initialized) {
             throw new RuntimeException("Not initialize!");
         }
         try {
@@ -81,7 +81,7 @@ public class EbeanHandler {
     }
     
     public void install() {
-        if (!initialize) {
+        if (!initialized) {
             throw new RuntimeException("Not initialize!");
         }
         try {
@@ -100,7 +100,7 @@ public class EbeanHandler {
     }
 
     public void initialize() throws Exception {
-        if (initialize) {
+        if (initialized) {
             throw new RuntimeException("Already initialize!");
         } else if (driver == null || url == null || userName == null
                 || password == null) {
@@ -138,7 +138,7 @@ public class EbeanHandler {
         Thread.currentThread().setContextClassLoader(loader);
         
 
-        initialize = true;
+        initialized = true;
     }
 
     public String getName() {
@@ -158,7 +158,7 @@ public class EbeanHandler {
     }
 
     public EbeanServer getServer() {
-        if (!initialize) {
+        if (!initialized) {
             throw new NullPointerException("Not initialized!");
         }
         return server;
@@ -168,8 +168,8 @@ public class EbeanHandler {
         this.driver = driver;
     }
 
-    public boolean isInitialize() {
-        return initialize;
+    public boolean isInitialized() {
+        return initialized;
     }
 
     public JavaPlugin getProxy() {
