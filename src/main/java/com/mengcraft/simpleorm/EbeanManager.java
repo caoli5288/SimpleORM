@@ -27,6 +27,13 @@ public class EbeanManager {
         }
         return out;
     }
+    
+    public EbeanHandler getHandler(String name) {
+        if (map.get(name) == null) {
+            throw new NullPointerException("#3 NOT HANDLE!");
+        }
+        return map.get(name);
+    }
 
     private EbeanHandler load(JavaPlugin proxy) {
         EbeanHandler out = new EbeanHandler(proxy);
