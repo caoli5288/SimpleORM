@@ -33,14 +33,10 @@ public class EbeanHandler {
     private JavaPlugin proxy;
 
     public EbeanHandler(JavaPlugin proxy) {
-        if (manager.hasHandler(proxy)) {
-            throw new RuntimeException("Already in manager!");
-        }
         this.proxy = proxy;
         this.name = proxy.getName();
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
-        this.manager.setHandler(proxy, this);
     }
     
     @Override
@@ -176,11 +172,10 @@ public class EbeanHandler {
         return proxy;
     }
 
-    public EbeanHandler setProxy(JavaPlugin in) {
+    public void setProxy(JavaPlugin in) {
         if (this.proxy != in) {
             this.proxy = in;
         }
-        return this;
     }
 
 }

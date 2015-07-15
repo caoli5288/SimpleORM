@@ -19,15 +19,18 @@ public class EbeanManager {
     }
 
     public EbeanHandler getHandler(JavaPlugin proxy) {
-        String name = proxy.getName();
-        return map.get(name) != null ?
-               map.get(name).setProxy(proxy) :
-               load(proxy);
+        EbeanHandler out = map.get(proxy.getName());
+        if (out == null) {
+            out = load(proxy);
+        } else if (out.getProxy() != proxy) {
+            out.setProxy(proxy);
+        }
+        return out;
     }
 
     private EbeanHandler load(JavaPlugin proxy) {
         EbeanHandler out = new EbeanHandler(proxy);
-        
+
         String driver = proxy.getConfig()
                 .getString("dataSource.driver");
         String url = proxy.getConfig()
@@ -36,7 +39,7 @@ public class EbeanManager {
                 .getString("dataSource.userName");
         String password = proxy.getConfig()
                 .getString("dataSource.password");
-        
+
         if (driver != null) {
             out.setDriver(driver);
         } else {
@@ -44,7 +47,7 @@ public class EbeanManager {
                     , Default.DRIVER);
             proxy.saveConfig();
         }
-        
+
         if (url != null) {
             out.setUrl(url);
         } else {
@@ -52,7 +55,7 @@ public class EbeanManager {
                     , Default.URL);
             proxy.saveConfig();
         }
-        
+
         if (userName != null) {
             out.setUserName(userName);
         } else {
@@ -60,7 +63,7 @@ public class EbeanManager {
                     , Default.USER_NAME);
             proxy.saveConfig();
         }
-        
+
         if (password != null) {
             out.setPassword(password);
         } else {
