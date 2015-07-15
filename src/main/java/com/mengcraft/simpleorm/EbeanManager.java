@@ -6,8 +6,6 @@ import java.util.Map;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.mengcraft.simpleorm.Main.Default;
-
 public class EbeanManager {
 
     public static final EbeanManager DEFAULT = new EbeanManager();
@@ -27,7 +25,7 @@ public class EbeanManager {
         }
         return out;
     }
-    
+
     public EbeanHandler getHandler(String name) {
         if (map.get(name) == null) {
             throw new NullPointerException("#3 NOT HANDLE!");
@@ -91,6 +89,15 @@ public class EbeanManager {
 
     boolean hasHandler(JavaPlugin proxy) {
         return map.get(proxy.getName()) != null;
+    }
+
+    public static class Default {
+
+        public static final Object PASSWORD = "testPassword";
+        public static final Object USER_NAME = "testUserName";
+        public static final Object DRIVER = "com.mysql.jdbc.Driver";
+        public static final String URL = "jdbc:mysql://localhost/db";
+
     }
 
 }
