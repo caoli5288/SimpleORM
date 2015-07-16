@@ -70,7 +70,7 @@ public class EbeanHandler {
         try {
             SpiEbeanServer serv = (SpiEbeanServer) server;
             DdlGenerator gen = serv.getDdlGenerator();
-            gen.runScript(false, gen.generateDropDdl());
+            gen.runScript(true, gen.generateDropDdl());
         } catch (Exception e) {
             proxy.getLogger().info(e.getMessage());
         }
