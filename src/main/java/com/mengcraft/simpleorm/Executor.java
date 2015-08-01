@@ -6,9 +6,14 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 
-public class Debugger implements CommandExecutor {
+public class Executor implements CommandExecutor {
     
     private final EbeanManager manager = EbeanManager.DEFAULT;
+    private final Main main;
+
+    public Executor(Main main) {
+        this.main = main;
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command,
@@ -22,6 +27,10 @@ public class Debugger implements CommandExecutor {
             sender.sendMessage("[SimpleORM] No registered handler!");
         }
         return true;
+    }
+
+    public void install() {
+        main.getCommand("simpleorm").setExecutor(this);
     }
 
 }

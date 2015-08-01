@@ -15,7 +15,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getCommand("simpleorm").setExecutor(new Debugger());
+        new Executor(this).install();
     }
 
 }

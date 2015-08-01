@@ -1,6 +1,7 @@
 name: SimpleORM
 version: 0.1.5
 main: com.mengcraft.simpleorm.Main
+author: mengcraft.com
 
 commands:
   simpleorm:
