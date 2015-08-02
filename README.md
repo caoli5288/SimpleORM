@@ -5,6 +5,7 @@ Bukkit's build-in ORM support.
 # Usage
 Put it into your server's plugin folder, and start your server,
 or package source into your own plugin(not recommend).
+This is a sample project [xKit](https://github.com/caoli5288/xKit).
 
 # Developer
 If you want to use this library in your own plugin. code your main
