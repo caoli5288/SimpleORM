@@ -48,7 +48,7 @@ public class MyPlugin extend JavaPlugin {
         // This function will inject into Bukkit's build-in 
         // ORM support.
         handler.reflect();
-        // This function will try to create not exists talbes.
+        // This function will try to create not exists tables.
         handler.install();
         // Injected build-in method. Return initialized 
         // Ebean server.
