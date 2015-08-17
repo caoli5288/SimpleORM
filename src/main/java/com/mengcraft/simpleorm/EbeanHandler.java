@@ -1,5 +1,7 @@
 package com.mengcraft.simpleorm;
 
+import static java.lang.Thread.currentThread;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,8 +16,6 @@ import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
-
-    private final EbeanManager manager = EbeanManager.DEFAULT;
 
     private final ReflectUtil util;
     private final List<Class> list;
@@ -85,14 +85,13 @@ public class EbeanHandler {
                 server.find(line).findRowCount();
             }
             proxy.getLogger().info("Tables already exists!");
-        } catch (Exception e) {
-            proxy.getLogger().info(e.getMessage());
-            proxy.getLogger().info("Start create tables, wait...");
-            SpiEbeanServer serv = (SpiEbeanServer) server;
-            DdlGenerator gen = serv.getDdlGenerator();
-            gen.runScript(ignore, gen.generateCreateDdl());
-            proxy.getLogger().info("Create Tables done!");
-        }
+		} catch (Exception e) {
+			proxy.getLogger().info(e.getMessage());
+			proxy.getLogger().info("Start create tables, wait...");
+			DdlGenerator gen = ((SpiEbeanServer) server).getDdlGenerator();
+			gen.runScript(ignore, gen.generateCreateDdl());
+			proxy.getLogger().info("Create Tables done!");
+		}
     }
 
     public void install() {
@@ -133,9 +132,9 @@ public class EbeanHandler {
         ClassLoader loader = Thread.currentThread()
                 .getContextClassLoader();
 
-        Thread.currentThread().setContextClassLoader(util.loader(proxy));
+        currentThread().setContextClassLoader(util.loader(proxy));
         server = EbeanServerFactory.create(sc);
-        Thread.currentThread().setContextClassLoader(loader);
+        currentThread().setContextClassLoader(loader);
 
         initialized = true;
     }
