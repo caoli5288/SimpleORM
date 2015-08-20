@@ -2,12 +2,12 @@
 A Bukkit plugin provides a central ORM Manager. It have no reload issue from
 Bukkit's build-in ORM support.
 
-# Usage
+## Usage
 Put it into your server's plugin folder, and start your server,
 or package source into your own plugin(not recommend).
 This is a sample project [xKit](https://github.com/caoli5288/xKit).
 
-# Developer
+## Developer
 If you want to use this library in your own plugin. code your main
 class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
 ```java
@@ -91,3 +91,7 @@ dataSource:
   userName: username
   password: password
 ```
+
+## Attention
+- A @ManyToOne field is lazy load!
+- A @ManyToOne field is not support on sqlite platform!
