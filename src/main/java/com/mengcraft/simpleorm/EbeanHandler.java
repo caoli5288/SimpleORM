@@ -3,12 +3,14 @@ package com.mengcraft.simpleorm;
 import static java.lang.Thread.currentThread;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
+import com.avaje.ebean.Query;
 import com.avaje.ebean.config.DataSourceConfig;
 import com.avaje.ebean.config.ServerConfig;
 import com.avaje.ebean.config.dbplatform.SQLitePlatform;
@@ -49,6 +51,14 @@ public class EbeanHandler {
             list.add(in);
         }
     }
+    
+	public <T> Query<T> find(Class<T> in) {
+		return getServer().find(in);
+	}
+	
+	public <T> T find(Class<T> in, Object id) {
+		return getServer().find(in, id);
+	}
 
     public void reflect() {
         if (!initialized) {
@@ -142,8 +152,16 @@ public class EbeanHandler {
     public String getName() {
         return name;
     }
-
-    public void setUrl(String url) {
+    
+    public void save(Object in) {
+    	getServer().save(in);
+    }
+    
+	public void save(Collection<?> collection) {
+		getServer().save(collection);
+	}
+	
+	public void setUrl(String url) {
         this.url = url;
     }
 
@@ -179,5 +197,9 @@ public class EbeanHandler {
             this.proxy = in;
         }
     }
+
+	public <T> T bean(Class<T> in) {
+		return getServer().createEntityBean(in);
+	}
 
 }
