@@ -86,6 +86,11 @@ public class EbeanHandler {
         }
     }
 
+    /**
+     * Create defined classes's tables.
+     * 
+     * @param ignore Ignore exception when run create table.
+     */
     public void install(boolean ignore) {
         if (!initialized) {
             throw new RuntimeException("Not initialize!");
