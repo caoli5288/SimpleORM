@@ -93,9 +93,9 @@ public class EbeanManager {
 
     public static class Default {
 
-        public static final Object PASSWORD = "testPassword";
-        public static final Object USER_NAME = "testUserName";
-        public static final Object DRIVER = "com.mysql.jdbc.Driver";
+        public static final String PASSWORD = "testPassword";
+        public static final String USER_NAME = "testUserName";
+        public static final String DRIVER = "com.mysql.jdbc.Driver";
         public static final String URL = "jdbc:mysql://localhost/db";
 
     }
