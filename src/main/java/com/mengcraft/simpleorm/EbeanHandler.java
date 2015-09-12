@@ -205,16 +205,16 @@ public class EbeanHandler {
         }
     }
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
 	public String getName() {
 	    return name;
 	}
 
 	public <T> T bean(Class<T> in) {
 		return getServer().createEntityBean(in);
+	}
+
+	private void setName(String name) {
+		this.name = name;
 	}
 
 }
