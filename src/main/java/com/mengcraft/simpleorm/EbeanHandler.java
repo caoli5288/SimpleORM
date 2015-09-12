@@ -36,14 +36,13 @@ public class EbeanHandler {
 
     public EbeanHandler(JavaPlugin proxy) {
         this.proxy = proxy;
-        this.name = proxy.getName();
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
     }
 
     @Override
     public String toString() {
-        return name + "," + url + "," + userName + "," + initialized;
+        return getName() + ", " + url + ", " + userName + ", " + initialized;
     }
 
     public void define(Class<?> in) {
@@ -122,6 +121,9 @@ public class EbeanHandler {
         } else if (list.size() < 1) {
             throw new RuntimeException("Not define entity class!");
         }
+        // Initialize handler name.
+        setName(name);
+        
         DataSourceConfig dsc = new DataSourceConfig();
 
         dsc.setDriver(driver);
@@ -155,13 +157,9 @@ public class EbeanHandler {
     }
 
     public void initialize() throws Exception {
-    	initialize(name);
+    	initialize(getProxy().getName());
     }
 
-    public String getName() {
-        return name;
-    }
-    
     public void save(Object in) {
     	getServer().save(in);
     }
@@ -202,10 +200,18 @@ public class EbeanHandler {
     }
 
     public void setProxy(JavaPlugin in) {
-        if (this.proxy != in) {
+        if (in != null && this.proxy != in) {
             this.proxy = in;
         }
     }
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getName() {
+	    return name;
+	}
 
 	public <T> T bean(Class<T> in) {
 		return getServer().createEntityBean(in);
