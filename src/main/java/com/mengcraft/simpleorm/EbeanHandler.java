@@ -112,8 +112,8 @@ public class EbeanHandler {
     public void install() {
         install(false);
     }
-
-    public void initialize() throws Exception {
+    
+    public void initialize(String name) throws Exception {
         if (initialized) {
             throw new RuntimeException("Already initialize!");
         } else if (driver == null || url == null || userName == null
@@ -152,6 +152,10 @@ public class EbeanHandler {
         currentThread().setContextClassLoader(loader);
 
         initialized = true;
+    }
+
+    public void initialize() throws Exception {
+    	initialize(name);
     }
 
     public String getName() {
