@@ -5,6 +5,7 @@ import static java.lang.Thread.currentThread;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,36 +20,38 @@ import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
 
-    private final ReflectUtil util;
+    private String driver   = EbeanManager.Default.DRIVER;
+	private String url      = EbeanManager.Default.URL;
+	private String userName = EbeanManager.Default.USER_NAME;
+	private String password = EbeanManager.Default.PASSWORD;
+	
+	private final JavaPlugin proxy;
+	private final ReflectUtil util;
     private final List<Class> list;
 
     private String name;
 
-    private String driver;
-    private String url;
-    private String userName;
-    private String password;
-
-    private boolean initialized;
+    private int coreSize = 1;
+    private int maxSize  = 4;
 
     private EbeanServer server;
-    private JavaPlugin proxy;
-
+    
     public EbeanHandler(JavaPlugin proxy) {
         this.proxy = proxy;
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
     }
 
-    @Override
+	@Override
     public String toString() {
-        return getName() + ", " + url + ", " + userName + ", " + initialized;
+        return getName() + ", " + url + ", " + userName + ", " + (server != null);
     }
 
     public void define(Class<?> in) {
-        if (!initialized && !list.contains(in)) {
-            list.add(in);
+    	if (server != null) {
+            throw new RuntimeException("Already initialize!");
         }
+        if (!list.contains(in)) list.add(in);
     }
     
 	public <T> Query<T> find(Class<T> in) {
@@ -60,7 +63,7 @@ public class EbeanHandler {
 	}
 
     public void reflect() {
-        if (!initialized) {
+        if (server == null) {
             throw new RuntimeException("Not initialize!");
         }
         if (proxy.getDatabase() != server) {
@@ -73,7 +76,7 @@ public class EbeanHandler {
     }
 
     public void uninstall() {
-        if (!initialized) {
+        if (server == null) {
             throw new RuntimeException("Not initialize!");
         }
         try {
@@ -91,7 +94,7 @@ public class EbeanHandler {
      * @param ignore Ignore exception when run create table.
      */
     public void install(boolean ignore) {
-        if (!initialized) {
+        if (server == null) {
             throw new RuntimeException("Not initialize!");
         }
         try {
@@ -113,47 +116,44 @@ public class EbeanHandler {
     }
     
     public void initialize(String name) throws Exception {
-        if (initialized) {
+        if (server != null) {
             throw new RuntimeException("Already initialize!");
-        } else if (driver == null || url == null || userName == null
-                || password == null) {
-            throw new NullPointerException("Not configured!");
         } else if (list.size() < 1) {
             throw new RuntimeException("Not define entity class!");
         }
         // Initialize handler name.
         setName(name);
         
-        DataSourceConfig dsc = new DataSourceConfig();
+        DataSourceConfig sourceConfig = new DataSourceConfig();
 
-        dsc.setDriver(driver);
-        dsc.setUrl(url);
-        dsc.setUsername(userName);
-        dsc.setPassword(password);
+        sourceConfig.setDriver(driver);
+        sourceConfig.setUrl(url);
+        sourceConfig.setUsername(userName);
+        sourceConfig.setPassword(password);
+        
+        sourceConfig.setMinConnections(coreSize);
+        sourceConfig.setMaxConnections(maxSize);
 
-        ServerConfig sc = new ServerConfig();
+        ServerConfig serverConfig = new ServerConfig();
 
         if (driver.contains("sqlite")) {
-            dsc.setIsolationLevel(8);
-            sc.setDatabasePlatform(new SQLitePlatform());
-            sc.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+            sourceConfig.setIsolationLevel(8);
+            serverConfig.setDatabasePlatform(new SQLitePlatform());
+            serverConfig.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
         }
 
-        sc.setName(name);
-        sc.setDataSourceConfig(dsc);
+        serverConfig.setName(name);
+        serverConfig.setDataSourceConfig(sourceConfig);
 
         for (Class<?> line : list) {
-            sc.addClass(line);
+            serverConfig.addClass(line);
         }
 
-        ClassLoader loader = Thread.currentThread()
-                .getContextClassLoader();
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
 
         currentThread().setContextClassLoader(util.loader(proxy));
-        server = EbeanServerFactory.create(sc);
+        setServer(EbeanServerFactory.create(serverConfig));
         currentThread().setContextClassLoader(loader);
-
-        initialized = true;
     }
 
     public void initialize() throws Exception {
@@ -180,29 +180,23 @@ public class EbeanHandler {
         this.password = password;
     }
 
-    public EbeanServer getServer() {
-        if (!initialized) {
-            throw new NullPointerException("Not initialized!");
-        }
-        return server;
-    }
+	public EbeanServer getServer() {
+		if (server == null) {
+			throw new RuntimeException("Not initialize!");
+		}
+		return server;
+	}
 
     public void setDriver(String driver) {
         this.driver = driver;
     }
 
-    public boolean isInitialized() {
-        return initialized;
-    }
+	public boolean isInitialized() {
+		return getServer() != null;
+	}
 
     public JavaPlugin getProxy() {
         return proxy;
-    }
-
-    public void setProxy(JavaPlugin in) {
-        if (in != null && this.proxy != in) {
-            this.proxy = in;
-        }
     }
 
 	public String getName() {
@@ -217,6 +211,26 @@ public class EbeanHandler {
 		if (name != null) {
 			this.name = name;
 		} else throw new NullPointerException();
+	}
+
+	public int getCoreSize() {
+		return coreSize;
+	}
+
+	public void setCoreSize(int coreSize) {
+		this.coreSize = coreSize;
+	}
+
+	public int getMaxSize() {
+		return maxSize;
+	}
+
+	public void setMaxSize(int maxSize) {
+		this.maxSize = maxSize;
+	}
+
+	private void setServer(EbeanServer server) {
+		this.server = server;
 	}
 
 }

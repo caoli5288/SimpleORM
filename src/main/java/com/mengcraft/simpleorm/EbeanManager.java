@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,10 +19,9 @@ public class EbeanManager {
 
     public EbeanHandler getHandler(JavaPlugin proxy) {
         EbeanHandler out = map.get(proxy.getName());
-        if (out == null) {
-            out = load(proxy);
-        } else if (out.getProxy() != proxy) {
-            out.setProxy(proxy);
+        if (out == null || out.getProxy() != proxy) {
+            out = a(proxy);
+            map.put(proxy.getName(), out);
         }
         return out;
     }
@@ -37,61 +37,54 @@ public class EbeanManager {
         map.put(proxy.getName(), handler);
     }
 
-    private EbeanHandler load(JavaPlugin proxy) {
-        EbeanHandler out = new EbeanHandler(proxy);
+    public Collection<EbeanHandler> handers() {
+		return new ArrayList<>(map.values());
+	}
 
-        String driver = proxy.getConfig()
-                .getString("dataSource.driver");
-        String url = proxy.getConfig()
-                .getString("dataSource.url");
-        String userName = proxy.getConfig()
-                .getString("dataSource.userName");
-        String password = proxy.getConfig()
-                .getString("dataSource.password");
+	public boolean hasHandler(JavaPlugin proxy) {
+		return map.get(proxy.getName()) != null;
+	}
 
-        if (driver != null) {
-            out.setDriver(driver);
-        } else {
-            proxy.getConfig().set("dataSource.driver"
-                    , Default.DRIVER);
-            proxy.saveConfig();
-        }
+    private EbeanHandler a(JavaPlugin proxy) {
+	    EbeanHandler handler = new EbeanHandler(proxy);
+	
+	    String driver = proxy.getConfig().getString("dataSource.driver");
+	    String url = proxy.getConfig().getString("dataSource.url");
+	    String userName = proxy.getConfig().getString("dataSource.userName");
+	    String password = proxy.getConfig().getString("dataSource.password");
+	
+	    if (driver != null) {
+	        handler.setDriver(driver);
+	    } else {
+	        proxy.getConfig().set("dataSource.driver", Default.DRIVER);
+	        proxy.saveConfig();
+	    }
+	
+	    if (url != null) {
+	        handler.setUrl(url);
+	    } else {
+	        proxy.getConfig().set("dataSource.url", Default.URL);
+	        proxy.saveConfig();
+	    }
+	
+	    if (userName != null) {
+	        handler.setUserName(userName);
+	    } else {
+	        proxy.getConfig().set("dataSource.userName", Default.USER_NAME);
+	        proxy.saveConfig();
+	    }
+	
+	    if (password != null) {
+	        handler.setPassword(password);
+	    } else {
+	        proxy.getConfig().set("dataSource.password", Default.PASSWORD);
+	        proxy.saveConfig();
+	    }
+	    
+	    return handler;
+	}
 
-        if (url != null) {
-            out.setUrl(url);
-        } else {
-            proxy.getConfig().set("dataSource.url"
-                    , Default.URL);
-            proxy.saveConfig();
-        }
-
-        if (userName != null) {
-            out.setUserName(userName);
-        } else {
-            proxy.getConfig().set("dataSource.userName"
-                    , Default.USER_NAME);
-            proxy.saveConfig();
-        }
-
-        if (password != null) {
-            out.setPassword(password);
-        } else {
-            proxy.getConfig().set("dataSource.password"
-                    , Default.PASSWORD);
-            proxy.saveConfig();
-        }
-        return out;
-    }
-
-    Collection<EbeanHandler> handers() {
-        return map.values();
-    }
-
-    boolean hasHandler(JavaPlugin proxy) {
-        return map.get(proxy.getName()) != null;
-    }
-
-    public static class Default {
+	public static class Default {
 
         public static final String PASSWORD = "testPassword";
         public static final String USER_NAME = "testUserName";
