@@ -163,10 +163,26 @@ public class EbeanHandler {
     	getServer().save(in);
     }
     
-	public void save(Collection<?> collection) {
-		getServer().save(collection);
+	public int save(Collection<?> collection) {
+		return getServer().save(collection);
 	}
 	
+	public void insert(Object record) {
+		getServer().insert(record);
+	}
+	
+	public void update(Object record) {
+		getServer().update(record);
+	}
+	
+	public void delete(Object record) {
+		getServer().delete(record);
+	}
+	
+	public int delete(Collection<?> records) {
+		return getServer().delete(records);
+	}
+
 	public void setUrl(String url) {
         this.url = url;
     }
