@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.Plugin;
 
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
@@ -24,7 +24,7 @@ public class EbeanHandler {
 	private String userName = EbeanManager.Default.USER_NAME;
 	private String password = EbeanManager.Default.PASSWORD;
 	
-	private final JavaPlugin proxy;
+	private final Plugin proxy;
 	private final ReflectUtil util;
     private final List<Class> list;
 
@@ -35,7 +35,7 @@ public class EbeanHandler {
 
     private EbeanServer server;
     
-    public EbeanHandler(JavaPlugin proxy) {
+    public EbeanHandler(Plugin proxy) {
         this.proxy = proxy;
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
@@ -210,7 +210,7 @@ public class EbeanHandler {
 		return server != null;
 	}
 
-    public JavaPlugin getProxy() {
+    public Plugin getProxy() {
         return proxy;
     }
 
