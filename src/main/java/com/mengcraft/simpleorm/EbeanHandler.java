@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
@@ -40,6 +41,10 @@ public class EbeanHandler {
         this.util = ReflectUtil.UTIL;
         this.list = new ArrayList<>();
     }
+    
+	public EbeanHandler(JavaPlugin proxy) {
+		this(Plugin.class.cast(proxy));
+	}
 
 	@Override
     public String toString() {
