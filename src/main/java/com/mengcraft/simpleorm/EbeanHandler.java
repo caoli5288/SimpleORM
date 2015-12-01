@@ -215,6 +215,10 @@ public class EbeanHandler {
 		return server != null;
 	}
 
+    public boolean isNotInitialized() {
+        return server == null;
+    }
+
     public Plugin getProxy() {
         return proxy;
     }
