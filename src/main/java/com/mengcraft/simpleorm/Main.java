@@ -1,9 +1,15 @@
 package com.mengcraft.simpleorm;
 
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Collection;
+
 public class Main extends JavaPlugin {
+
+    private final EbeanManager manager = EbeanManager.DEFAULT;
 
     @Override
     public void onLoad() {
@@ -15,7 +21,20 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        new Executor(this).install();
+        getCommand("simpleorm").setExecutor(this);
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        Collection<EbeanHandler> handlers = manager.handers();
+        if (handlers.size() != 0) {
+            for (EbeanHandler handler : manager.handers()) {
+                sender.sendMessage("[SimpleORM] " + handler);
+            }
+        } else {
+            sender.sendMessage("[SimpleORM] No registered handler!");
+        }
+        return true;
     }
 
 }

@@ -20,10 +20,10 @@ import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
 
-    private String driver = EbeanManager.Default.DRIVER;
-    private String url = EbeanManager.Default.URL;
-    private String userName = EbeanManager.Default.USER_NAME;
-    private String password = EbeanManager.Default.PASSWORD;
+    private String driver;
+    private String url;
+    private String userName;
+    private String password;
 
     private final Plugin proxy;
     private final ReflectUtil util;
@@ -55,7 +55,7 @@ public class EbeanHandler {
 
     public void define(Class<?> in) {
         if (server != null) {
-            throw new RuntimeException("Already initialize!");
+            throw new RuntimeException("Already initialized!");
         }
         if (!list.contains(in)) list.add(in);
     }
@@ -70,7 +70,7 @@ public class EbeanHandler {
 
     public void reflect() {
         if (server == null) {
-            throw new RuntimeException("Not initialize!");
+            throw new RuntimeException("Not initialized!");
         }
         if (proxy.getDatabase() != server) {
             try {
@@ -83,7 +83,7 @@ public class EbeanHandler {
 
     public void uninstall() {
         if (server == null) {
-            throw new RuntimeException("Not initialize!");
+            throw new RuntimeException("Not initialized!");
         }
         try {
             SpiEbeanServer serv = (SpiEbeanServer) server;
@@ -101,7 +101,7 @@ public class EbeanHandler {
      */
     public void install(boolean ignore) {
         if (server == null) {
-            throw new RuntimeException("Not initialize!");
+            throw new RuntimeException("Not initialized!");
         }
         try {
             for (Class<?> line : list) {
@@ -121,11 +121,11 @@ public class EbeanHandler {
         install(false);
     }
 
-    public void initialize(String name) throws Exception {
+    public void initialize(String name) throws DatabaseException {
         if (server != null) {
-            throw new RuntimeException("Already initialize!");
+            throw new DatabaseException("Already initialized!");
         } else if (list.size() < 1) {
-            throw new RuntimeException("Not define entity class!");
+            throw new DatabaseException("Not define entity class!");
         }
         // Initialize handler name.
         setName(name);
@@ -161,8 +161,11 @@ public class EbeanHandler {
         }
 
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
-
-        currentThread().setContextClassLoader(util.loader(proxy));
+        try {
+            currentThread().setContextClassLoader(util.loader(proxy));
+        } catch (Exception e) {
+            throw new DatabaseException(e);
+        }
         setServer(EbeanServerFactory.create(serverConfig));
         currentThread().setContextClassLoader(loader);
     }
