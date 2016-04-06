@@ -1,6 +1,5 @@
 package com.mengcraft.simpleorm;
 
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
@@ -18,7 +17,7 @@ public class EbeanManager {
         this.map = new HashMap<>();
     }
 
-    public EbeanHandler getHandler(Plugin proxy) {
+    public EbeanHandler getHandler(JavaPlugin proxy) {
         EbeanHandler out = map.get(proxy.getName());
         if (out == null || out.getProxy() != proxy) {
             map.put(proxy.getName(), out = a(proxy));
@@ -45,7 +44,7 @@ public class EbeanManager {
         return map.get(proxy.getName()) != null;
     }
 
-    private EbeanHandler a(Plugin proxy) {
+    private EbeanHandler a(JavaPlugin proxy) {
         EbeanHandler handler = new EbeanHandler(proxy);
 
         String driver = proxy.getConfig().getString("dataSource.driver");

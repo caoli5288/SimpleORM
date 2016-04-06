@@ -86,8 +86,8 @@ public class EbeanHandler {
             throw new RuntimeException("Not initialized!");
         }
         try {
-            SpiEbeanServer serv = (SpiEbeanServer) server;
-            DdlGenerator gen = serv.getDdlGenerator();
+            SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
+            DdlGenerator gen = spi.getDdlGenerator();
             gen.runScript(true, gen.generateDropDdl());
         } catch (Exception e) {
             proxy.getLogger().info(e.getMessage());
@@ -105,15 +105,15 @@ public class EbeanHandler {
         }
         try {
             for (Class<?> line : list) {
-                server.find(line).findRowCount();
+                server.find(line).setMaxRows(1).findRowCount();
             }
             proxy.getLogger().info("Tables already exists!");
         } catch (Exception e) {
             proxy.getLogger().info(e.getMessage());
             proxy.getLogger().info("Start create tables, wait...");
-            DdlGenerator gen = ((SpiEbeanServer) server).getDdlGenerator();
+            DdlGenerator gen = SpiEbeanServer.class.cast(server).getDdlGenerator();
             gen.runScript(ignore, gen.generateCreateDdl());
-            proxy.getLogger().info("Create Tables done!");
+            proxy.getLogger().info("Create tables done!");
         }
     }
 
