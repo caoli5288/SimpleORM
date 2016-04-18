@@ -2,9 +2,9 @@ package com.mengcraft.simpleorm;
 
 import static java.lang.Thread.currentThread;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,28 +20,23 @@ import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 
 public class EbeanHandler {
 
+    private final Set<Class> typeSet = new HashSet<>();
+    private final Plugin proxy;
+
+    private String name;
     private String driver;
     private String url;
     private String userName;
     private String password;
 
-    private final Plugin proxy;
-    private final ReflectUtil util;
-    private final List<Class> list;
-
-    private String name;
-
     private int coreSize = 1;
-    private int maxSize = 4;
+    private int maxSize = 8;
 
     private IsolationLevel isolationLevel;
-
     private EbeanServer server;
 
     public EbeanHandler(Plugin proxy) {
         this.proxy = proxy;
-        this.util = ReflectUtil.UTIL;
-        this.list = new ArrayList<>();
     }
 
     public EbeanHandler(JavaPlugin proxy) {
@@ -55,9 +50,9 @@ public class EbeanHandler {
 
     public void define(Class<?> in) {
         if (server != null) {
-            throw new RuntimeException("Already initialized!");
+            throw new DatabaseException("Already initialized!");
         }
-        if (!list.contains(in)) list.add(in);
+        typeSet.add(in);
     }
 
     public <T> Query<T> find(Class<T> in) {
@@ -70,20 +65,23 @@ public class EbeanHandler {
 
     public void reflect() {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new DatabaseException("Not initialized!");
+        }
+        if (!proxy.getDescription().isDatabaseEnabled()) {
+            proxy.getDescription().setDatabaseEnabled(true);
         }
         if (proxy.getDatabase() != server) {
             try {
-                util.register(proxy, server);
+                Reflect.replace(proxy, server);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new DatabaseException(e);
             }
         }
     }
 
     public void uninstall() {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new DatabaseException("Not initialized!");
         }
         try {
             SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
@@ -101,10 +99,10 @@ public class EbeanHandler {
      */
     public void install(boolean ignore) {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new DatabaseException("Not initialized!");
         }
         try {
-            for (Class<?> line : list) {
+            for (Class<?> line : typeSet) {
                 server.find(line).setMaxRows(1).findRowCount();
             }
             proxy.getLogger().info("Tables already exists!");
@@ -124,7 +122,7 @@ public class EbeanHandler {
     public void initialize(String name) throws DatabaseException {
         if (server != null) {
             throw new DatabaseException("Already initialized!");
-        } else if (list.size() < 1) {
+        } else if (typeSet.size() < 1) {
             throw new DatabaseException("Not define entity class!");
         }
         // Initialize handler name.
@@ -156,13 +154,13 @@ public class EbeanHandler {
         serverConfig.setName(name);
         serverConfig.setDataSourceConfig(sourceConfig);
 
-        for (Class<?> line : list) {
-            serverConfig.addClass(line);
+        for (Class<?> type : typeSet) {
+            serverConfig.addClass(type);
         }
 
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         try {
-            currentThread().setContextClassLoader(util.loader(proxy));
+            currentThread().setContextClassLoader(Reflect.getLoader(proxy));
         } catch (Exception e) {
             throw new DatabaseException(e);
         }
@@ -212,7 +210,7 @@ public class EbeanHandler {
 
     public EbeanServer getServer() {
         if (server == null) {
-            throw new RuntimeException("Not initialize!");
+            throw new DatabaseException("Not initialize!");
         }
         return server;
     }
