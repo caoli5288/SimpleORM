@@ -1,14 +1,5 @@
 package com.mengcraft.simpleorm;
 
-import static java.lang.Thread.currentThread;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
-
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
 import com.avaje.ebean.Query;
@@ -17,6 +8,14 @@ import com.avaje.ebean.config.ServerConfig;
 import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
+import static java.lang.Thread.currentThread;
 
 public class EbeanHandler {
 
@@ -168,7 +167,7 @@ public class EbeanHandler {
         currentThread().setContextClassLoader(loader);
     }
 
-    public void initialize() throws Exception {
+    public void initialize() throws DatabaseException {
         initialize(getProxy().getName());
     }
 
