@@ -129,6 +129,7 @@ public class EbeanHandler {
 
         DataSourceConfig sourceConfig = new DataSourceConfig();
 
+        sourceConfig.setHeartbeatSql("select 1");
         sourceConfig.setDriver(driver);
         sourceConfig.setUrl(url);
         sourceConfig.setUsername(userName);
@@ -137,11 +138,12 @@ public class EbeanHandler {
         sourceConfig.setMinConnections(coreSize);
         sourceConfig.setMaxConnections(maxSize);
 
-        ServerConfig serverConfig = new ServerConfig();
 
         if (this.isolationLevel != null) {
             sourceConfig.setIsolationLevel(this.isolationLevel.getRawLevel());
         }
+
+        ServerConfig serverConfig = new ServerConfig();
 
         if (driver.contains("sqlite")) {
             // Rewrite isolation level if is SQLite platform.
