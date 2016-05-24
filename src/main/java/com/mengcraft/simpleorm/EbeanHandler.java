@@ -22,6 +22,7 @@ public class EbeanHandler {
     private final Set<Class> typeSet = new HashSet<>();
     private final Plugin proxy;
 
+    private String heartbeat = "select 1";
     private String name;
     private String driver;
     private String url;
@@ -29,7 +30,7 @@ public class EbeanHandler {
     private String password;
 
     private int coreSize = 1;
-    private int maxSize = 8;
+    private int maxSize = (Runtime.getRuntime().availableProcessors() << 1) + 1;
 
     private IsolationLevel isolationLevel;
     private EbeanServer server;
@@ -49,7 +50,7 @@ public class EbeanHandler {
 
     public void define(Class<?> in) {
         if (server != null) {
-            throw new RuntimeException("Already initialized!");
+            throw new NullPointerException("Already initialized!");
         }
         typeSet.add(in);
     }
@@ -64,9 +65,9 @@ public class EbeanHandler {
 
     public void reflect() {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new NullPointerException("Not initialized!");
         }
-        if (!proxy.getDescription().isDatabaseEnabled()) {
+        if (!proxy.getDescription().isDatabaseEnabled()) { // hacked 1.9.2
             proxy.getDescription().setDatabaseEnabled(true);
         }
         if (proxy.getDatabase() != server) {
@@ -80,7 +81,7 @@ public class EbeanHandler {
 
     public void uninstall() {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new NullPointerException("Not initialized!");
         }
         try {
             SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
@@ -98,7 +99,7 @@ public class EbeanHandler {
      */
     public void install(boolean ignore) {
         if (server == null) {
-            throw new RuntimeException("Not initialized!");
+            throw new NullPointerException("Not initialized!");
         }
         try {
             for (Class<?> line : typeSet) {
@@ -129,7 +130,7 @@ public class EbeanHandler {
 
         DataSourceConfig sourceConfig = new DataSourceConfig();
 
-        sourceConfig.setHeartbeatSql("select 1");
+        sourceConfig.setHeartbeatSql(heartbeat);
         sourceConfig.setDriver(driver);
         sourceConfig.setUrl(url);
         sourceConfig.setUsername(userName);
@@ -211,7 +212,7 @@ public class EbeanHandler {
 
     public EbeanServer getServer() {
         if (server == null) {
-            throw new RuntimeException("Not initialize!");
+            throw new NullPointerException("Not initialized!");
         }
         return server;
     }
@@ -241,9 +242,10 @@ public class EbeanHandler {
     }
 
     private void setName(String name) {
-        if (name != null) {
-            this.name = name;
-        } else throw new NullPointerException();
+        if (name == null) {
+            throw new NullPointerException("name");
+        }
+        this.name = name;
     }
 
     public int getCoreSize() {
@@ -264,6 +266,16 @@ public class EbeanHandler {
 
     private void setServer(EbeanServer server) {
         this.server = server;
+    }
+
+    /**
+     * Set heartbeat sql command for this handler. Set it only if the
+     * default value "select 1" not compatible with your data-source.
+     *
+     * @param heartbeat The heartbeat sql command
+     */
+    public void setHeartbeat(String heartbeat) {
+        this.heartbeat = heartbeat;
     }
 
     public void setIsolationLevel(IsolationLevel isolationLevel) {
