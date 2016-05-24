@@ -22,6 +22,7 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         getCommand("simpleorm").setExecutor(this);
+        new MetricsLite(this).start();
     }
 
     @Override

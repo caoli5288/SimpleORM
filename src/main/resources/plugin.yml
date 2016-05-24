@@ -1,5 +1,5 @@
 name: SimpleORM
-version: 0.1.11
+version: ${project.version}
 main: com.mengcraft.simpleorm.Main
 author: mengcraft.com
 
