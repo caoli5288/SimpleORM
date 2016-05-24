@@ -49,7 +49,7 @@ public class EbeanHandler {
 
     public void define(Class<?> in) {
         if (server != null) {
-            throw new DatabaseException("Already initialized!");
+            throw new RuntimeException("Already initialized!");
         }
         typeSet.add(in);
     }
@@ -64,7 +64,7 @@ public class EbeanHandler {
 
     public void reflect() {
         if (server == null) {
-            throw new DatabaseException("Not initialized!");
+            throw new RuntimeException("Not initialized!");
         }
         if (!proxy.getDescription().isDatabaseEnabled()) {
             proxy.getDescription().setDatabaseEnabled(true);
@@ -73,14 +73,14 @@ public class EbeanHandler {
             try {
                 Reflect.replace(proxy, server);
             } catch (Exception e) {
-                throw new DatabaseException(e);
+                throw new RuntimeException(e);
             }
         }
     }
 
     public void uninstall() {
         if (server == null) {
-            throw new DatabaseException("Not initialized!");
+            throw new RuntimeException("Not initialized!");
         }
         try {
             SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
@@ -98,7 +98,7 @@ public class EbeanHandler {
      */
     public void install(boolean ignore) {
         if (server == null) {
-            throw new DatabaseException("Not initialized!");
+            throw new RuntimeException("Not initialized!");
         }
         try {
             for (Class<?> line : typeSet) {
@@ -209,7 +209,7 @@ public class EbeanHandler {
 
     public EbeanServer getServer() {
         if (server == null) {
-            throw new DatabaseException("Not initialize!");
+            throw new RuntimeException("Not initialize!");
         }
         return server;
     }

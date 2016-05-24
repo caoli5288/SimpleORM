@@ -3,7 +3,7 @@ package com.mengcraft.simpleorm;
 /**
  * Created on 16-1-2.
  */
-public class DatabaseException extends RuntimeException {
+public class DatabaseException extends Exception {
 
     public DatabaseException() {
         super();
