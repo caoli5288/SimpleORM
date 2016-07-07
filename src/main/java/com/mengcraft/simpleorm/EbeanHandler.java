@@ -103,7 +103,7 @@ public class EbeanHandler {
         }
         try {
             for (Class<?> line : typeSet) {
-                server.find(line).setMaxRows(1).findRowCount();
+                server.find(line).setMaxRows(1).findUnique();
             }
             proxy.getLogger().info("Tables already exists!");
         } catch (Exception e) {
