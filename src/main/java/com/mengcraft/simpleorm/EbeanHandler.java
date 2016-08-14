@@ -125,6 +125,9 @@ public class EbeanHandler {
         } else if (typeSet.size() < 1) {
             throw new DatabaseException("Not define entity class!");
         }
+        // Hacked in newest modded server
+        PolicyInjector.inject();
+
         // Initialize handler name.
         setName(name);
 
