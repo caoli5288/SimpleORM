@@ -34,6 +34,34 @@ public class EbeanHandler {
 
     private IsolationLevel isolationLevel;
     private EbeanServer server;
+    
+//Add javax.management.MBeanTrustPermission Permission to java policy
+//In case of "java.security.AccessControlException: access denied" Error
+//Code Start
+
+    Policy.setPolicy(new AWSPolicy()); // Set up Policy
+
+    private static class AWSPolicy extends Policy {
+    private final Policy defaultPolicy;
+
+
+    public AWSPolicy() {
+      super();
+      defaultPolicy = Policy.getPolicy();
+    }
+
+
+    @Override
+    public boolean implies(ProtectionDomain domain, Permission permission) {
+      if (permission instanceof javax.management.MBeanTrustPermission) {
+        return true;
+      } else {
+        return defaultPolicy.implies(domain, permission);
+      }
+    }
+  }
+
+//Code Complete
 
     public EbeanHandler(Plugin proxy) {
         this.proxy = proxy;
