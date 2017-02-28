@@ -9,12 +9,16 @@ import java.util.Map;
 
 public class EbeanManager {
 
+    public static final String URL = "jdbc:mysql://localhost/db";
+    public static final String DRIVER = "com.mysql.jdbc.Driver";
+    public static final String USER_NAME = "testUserName";
+    public static final String PASSWORD = "testPassword";
+
     public static final EbeanManager DEFAULT = new EbeanManager();
 
-    private final Map<String, EbeanHandler> map;
+    private final Map<String, EbeanHandler> map = new HashMap<>();
 
     private EbeanManager() {
-        this.map = new HashMap<>();
     }
 
     public EbeanHandler getHandler(JavaPlugin proxy) {
@@ -52,40 +56,31 @@ public class EbeanManager {
         String userName = proxy.getConfig().getString("dataSource.userName");
         String password = proxy.getConfig().getString("dataSource.password");
 
-        if (driver != null) {
-            handler.setDriver(driver);
-        } else {
-            proxy.getConfig().set("dataSource.driver", DRIVER);
+        if (driver == null) {
+            proxy.getConfig().set("dataSource.driver", driver = DRIVER);
             proxy.saveConfig();
         }
+        handler.setDriver(driver);
 
-        if (url != null) {
-            handler.setUrl(url);
-        } else {
-            proxy.getConfig().set("dataSource.url", URL);
+        if (url == null) {
+            proxy.getConfig().set("dataSource.url", url = URL);
             proxy.saveConfig();
         }
+        handler.setUrl(url);
 
-        if (userName != null) {
-            handler.setUserName(userName);
-        } else {
-            proxy.getConfig().set("dataSource.userName", USER_NAME);
+        if (userName == null) {
+            proxy.getConfig().set("dataSource.userName", userName = USER_NAME);
             proxy.saveConfig();
         }
+        handler.setUserName(userName);
 
-        if (password != null) {
-            handler.setPassword(password);
-        } else {
-            proxy.getConfig().set("dataSource.password", PASSWORD);
+        if (password == null) {
+            proxy.getConfig().set("dataSource.password", password = PASSWORD);
             proxy.saveConfig();
         }
+        handler.setPassword(password);
 
         return handler;
     }
-
-    public static final String PASSWORD = "testPassword";
-    public static final String USER_NAME = "testUserName";
-    public static final String DRIVER = "com.mysql.jdbc.Driver";
-    public static final String URL = "jdbc:mysql://localhost/db";
 
 }
