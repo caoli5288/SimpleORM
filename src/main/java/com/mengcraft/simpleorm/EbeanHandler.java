@@ -9,11 +9,13 @@ import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
 
 import static java.lang.Thread.currentThread;
 
@@ -67,15 +69,14 @@ public class EbeanHandler {
         if (server == null) {
             throw new NullPointerException("Not initialized!");
         }
-        if (!proxy.getDescription().isDatabaseEnabled()) { // hacked 1.9.2
-            proxy.getDescription().setDatabaseEnabled(true);
-        }
-        if (proxy.getDatabase() != server) {
-            try {
-                Reflect.replace(proxy, server);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+        try {
+            PluginDescriptionFile desc = proxy.getDescription();
+            if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
+                desc.getClass().getMethod("setDatabaseEnabled", boolean.class).invoke(desc, true);
             }
+            Reflect.replace(proxy, server);
+        } catch (Exception e) {
+            proxy.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式|" + e.toString());
         }
     }
 
