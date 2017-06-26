@@ -1,6 +1,6 @@
 name: SimpleORM
 version: ${project.version}
-main: com.mengcraft.simpleorm.Main
+main: com.mengcraft.simpleorm.ORM
 author: mengcraft.com
 load: STARTUP
 
