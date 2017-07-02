@@ -133,7 +133,7 @@ public class EbeanHandler {
         HikariDataSource pool = new HikariDataSource();
         ServerConfig config = new ServerConfig();
 
-        pool.setConnectionTimeout(5000);
+        pool.setConnectionTimeout(10_000);
         pool.setJdbcUrl(url);
         pool.setUsername(userName);
         pool.setPassword(password);
@@ -155,7 +155,7 @@ public class EbeanHandler {
             config.setDatabasePlatform(new SQLitePlatform());
             config.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
         } else if (!(isolationLevel == null)) {
-            pool.setTransactionIsolation("TRANSACTION" + isolationLevel.name());
+            pool.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
         }
 
         config.setName(name);
