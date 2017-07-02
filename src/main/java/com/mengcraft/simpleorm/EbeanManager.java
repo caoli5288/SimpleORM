@@ -10,7 +10,6 @@ import java.util.Map;
 public class EbeanManager {
 
     public static final String URL = "jdbc:mysql://localhost/db";
-    public static final String DRIVER = "com.mysql.jdbc.Driver";
     public static final String USER_NAME = "testUserName";
     public static final String PASSWORD = "testPassword";
 
@@ -51,34 +50,33 @@ public class EbeanManager {
     private EbeanHandler a(JavaPlugin proxy) {
         EbeanHandler handler = new EbeanHandler(proxy);
 
-        String driver = proxy.getConfig().getString("dataSource.driver");
         String url = proxy.getConfig().getString("dataSource.url");
         String userName = proxy.getConfig().getString("dataSource.userName");
         String password = proxy.getConfig().getString("dataSource.password");
 
-        if (driver == null) {
-            proxy.getConfig().set("dataSource.driver", driver = DRIVER);
-            proxy.saveConfig();
-        }
-        handler.setDriver(driver);
+        boolean b = false;
 
         if (url == null) {
             proxy.getConfig().set("dataSource.url", url = URL);
-            proxy.saveConfig();
+            b = true;
         }
         handler.setUrl(url);
 
         if (userName == null) {
             proxy.getConfig().set("dataSource.userName", userName = USER_NAME);
-            proxy.saveConfig();
+            b = true;
         }
         handler.setUserName(userName);
 
         if (password == null) {
             proxy.getConfig().set("dataSource.password", password = PASSWORD);
-            proxy.saveConfig();
+            b = true;
         }
         handler.setPassword(password);
+
+        if (b) {
+            proxy.saveConfig();
+        }
 
         return handler;
     }

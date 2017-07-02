@@ -2,13 +2,13 @@ package com.mengcraft.simpleorm;
 
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
+import lombok.SneakyThrows;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collection;
-import java.util.logging.Level;
 
 public class ORM extends JavaPlugin {
 
@@ -31,7 +31,10 @@ public class ORM extends JavaPlugin {
     }
 
     @Override
+    @SneakyThrows
     public void onEnable() {
+        saveDefaultConfig();
+
         getCommand("simpleorm").setExecutor(this);
         new MetricsLite(this).start();
     }

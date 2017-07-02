@@ -3,11 +3,11 @@ package com.mengcraft.simpleorm;
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
 import com.avaje.ebean.Query;
-import com.avaje.ebean.config.DataSourceConfig;
 import com.avaje.ebean.config.ServerConfig;
 import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
+import com.zaxxer.hikari.HikariDataSource;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,14 +17,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 
-import static java.lang.Thread.currentThread;
-
 public class EbeanHandler {
 
     private final Set<Class> typeSet = new HashSet<>();
     private final Plugin proxy;
 
-    private String heartbeat = "select 1";
+    private String heartbeat;
     private String name;
     private String driver;
     private String url;
@@ -121,7 +119,7 @@ public class EbeanHandler {
     }
 
     public void initialize(String name) throws DatabaseException {
-        if (server != null) {
+        if (!(server == null)) {
             throw new DatabaseException("Already initialized!");
         } else if (typeSet.size() < 1) {
             throw new DatabaseException("Not define entity class!");
@@ -132,46 +130,49 @@ public class EbeanHandler {
         // Initialize handler name.
         setName(name);
 
-        DataSourceConfig sourceConfig = new DataSourceConfig();
+        HikariDataSource pool = new HikariDataSource();
+        ServerConfig config = new ServerConfig();
 
-        sourceConfig.setHeartbeatSql(heartbeat);
-        sourceConfig.setDriver(driver);
-        sourceConfig.setUrl(url);
-        sourceConfig.setUsername(userName);
-        sourceConfig.setPassword(password);
+        pool.setConnectionTimeout(5000);
+        pool.setJdbcUrl(url);
+        pool.setUsername(userName);
+        pool.setPassword(password);
 
-        sourceConfig.setMinConnections(coreSize);
-        sourceConfig.setMaxConnections(maxSize);
+        pool.setMaximumPoolSize(maxSize);
+        pool.setMinimumIdle(coreSize);
 
-
-        if (this.isolationLevel != null) {
-            sourceConfig.setIsolationLevel(this.isolationLevel.getRawLevel());
+        if (!(heartbeat == null)) {
+            pool.setConnectionTestQuery(heartbeat);
         }
 
-        ServerConfig serverConfig = new ServerConfig();
+        if (!(driver == null)) {
+            pool.setDriverClassName(driver);
+        }
 
-        if (driver.contains("sqlite")) {
+        if (url.startsWith("jdbc:sqlite:")) {
             // Rewrite isolation level if is SQLite platform.
-            sourceConfig.setIsolationLevel(8);
-            serverConfig.setDatabasePlatform(new SQLitePlatform());
-            serverConfig.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+            pool.setTransactionIsolation("TRANSACTION_SERIALIZABLE");
+            config.setDatabasePlatform(new SQLitePlatform());
+            config.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+        } else if (!(isolationLevel == null)) {
+            pool.setTransactionIsolation("TRANSACTION" + isolationLevel.name());
         }
 
-        serverConfig.setName(name);
-        serverConfig.setDataSourceConfig(sourceConfig);
+        config.setName(name);
+        config.setDataSource(pool);
 
         for (Class<?> type : typeSet) {
-            serverConfig.addClass(type);
+            config.addClass(type);
         }
 
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         try {
-            currentThread().setContextClassLoader(Reflect.getLoader(proxy));
+            Thread.currentThread().setContextClassLoader(Reflect.getLoader(proxy));
         } catch (Exception e) {
             throw new DatabaseException(e);
         }
-        setServer(EbeanServerFactory.create(serverConfig));
-        currentThread().setContextClassLoader(loader);
+        server = EbeanServerFactory.create(config);
+        Thread.currentThread().setContextClassLoader(loader);
     }
 
     public void initialize() throws DatabaseException {
@@ -221,6 +222,7 @@ public class EbeanHandler {
         return server;
     }
 
+    @Deprecated
     public void setDriver(String driver) {
         this.driver = driver;
     }
@@ -268,16 +270,7 @@ public class EbeanHandler {
         this.maxSize = maxSize;
     }
 
-    private void setServer(EbeanServer server) {
-        this.server = server;
-    }
-
-    /**
-     * Set heartbeat sql command for this handler. Set it only if the
-     * default value "select 1" not compatible with your data-source.
-     *
-     * @param heartbeat The heartbeat sql command
-     */
+    @Deprecated
     public void setHeartbeat(String heartbeat) {
         this.heartbeat = heartbeat;
     }
