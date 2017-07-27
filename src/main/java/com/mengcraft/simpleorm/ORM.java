@@ -3,12 +3,11 @@ package com.mengcraft.simpleorm;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import lombok.SneakyThrows;
+import lombok.val;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.Collection;
 
 public class ORM extends JavaPlugin {
 
@@ -24,26 +23,25 @@ public class ORM extends JavaPlugin {
 
     public static void loadLibrary(JavaPlugin plugin) {
         try {
-            plugin.getClass().getClassLoader().loadClass("com.avaje.ebean.EbeanServer");
+            Class.forName("com.avaje.ebean.EbeanServer");
         } catch (ClassNotFoundException e) {
             LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"));
         }
+        plugin.getLogger().info("ORM lib load okay!");
     }
 
     @Override
     @SneakyThrows
     public void onEnable() {
-        saveDefaultConfig();
-
         getCommand("simpleorm").setExecutor(this);
         new MetricsLite(this).start();
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        EbeanManager manager = EbeanManager.DEFAULT;
-        Collection<EbeanHandler> handlers = manager.handers();
-        if (handlers.size() != 0) {
+        val manager = EbeanManager.DEFAULT;
+        val l = manager.handers();
+        if (!l.isEmpty()) {
             for (EbeanHandler handler : manager.handers()) {
                 sender.sendMessage("[SimpleORM] " + handler);
             }

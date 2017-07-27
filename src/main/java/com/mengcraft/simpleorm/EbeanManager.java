@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import lombok.val;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
@@ -48,11 +49,13 @@ public class EbeanManager {
     }
 
     private EbeanHandler a(JavaPlugin proxy) {
-        EbeanHandler handler = new EbeanHandler(proxy);
+        val out = new EbeanHandler(proxy);
 
         String url = proxy.getConfig().getString("dataSource.url");
-        String userName = proxy.getConfig().getString("dataSource.userName");
+        String u = proxy.getConfig().getString("dataSource.userName");
         String password = proxy.getConfig().getString("dataSource.password");
+
+        val driver = proxy.getConfig().getString("dataSource.driver");
 
         boolean b = false;
 
@@ -60,25 +63,29 @@ public class EbeanManager {
             proxy.getConfig().set("dataSource.url", url = URL);
             b = true;
         }
-        handler.setUrl(url);
+        out.setUrl(url);
 
-        if (userName == null) {
-            proxy.getConfig().set("dataSource.userName", userName = USER_NAME);
+        if (u == null) {
+            proxy.getConfig().set("dataSource.userName", u = USER_NAME);
             b = true;
         }
-        handler.setUserName(userName);
+        out.setUserName(u);
 
         if (password == null) {
             proxy.getConfig().set("dataSource.password", password = PASSWORD);
             b = true;
         }
-        handler.setPassword(password);
+        out.setPassword(password);
 
         if (b) {
             proxy.saveConfig();
         }
 
-        return handler;
+        if (!(driver == null)) {
+            out.setDriver(driver);
+        }
+
+        return out;
     }
 
 }
