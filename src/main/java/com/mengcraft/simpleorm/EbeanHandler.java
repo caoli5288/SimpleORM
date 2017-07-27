@@ -141,23 +141,26 @@ public class EbeanHandler {
         pool.setMaximumPoolSize(maxSize);
         pool.setMinimumIdle(coreSize);
 
-        if (!(heartbeat == null)) {
-            pool.setConnectionTestQuery(heartbeat);
-        }
-
-        if (!(driver == null)) {
-            pool.setDriverClassName(driver);
-        }
-
         if (url.startsWith("jdbc:sqlite:")) {
-            // Rewrite isolation level if is SQLite platform.
+            // Fix compatible
+            pool.setAutoCommit(false);
+            pool.setConnectionTestQuery("select 1");
+            pool.setDriverClassName("org.sqlite.JDBC");
             pool.setTransactionIsolation("TRANSACTION_SERIALIZABLE");
             config.setDatabasePlatform(new SQLitePlatform());
             config.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
-        } else if (!(isolationLevel == null)) {
-            pool.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
-        }
+        } else {
+            if (!(driver == null)) {
+                pool.setDriverClassName(driver);
+            }
+            if (!(heartbeat == null)) {
+                pool.setConnectionTestQuery(heartbeat);
+            }
+            if (!(isolationLevel == null)) {
+                pool.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
+            }
 
+        }
         config.setName(name);
         config.setDataSource(pool);
 
