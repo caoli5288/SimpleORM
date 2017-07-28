@@ -6,8 +6,11 @@ import com.avaje.ebean.Query;
 import com.avaje.ebean.config.ServerConfig;
 import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
+import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.EqualsAndHashCode;
+import lombok.val;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,13 +18,18 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 
+@EqualsAndHashCode(of = "id")
 public class EbeanHandler {
 
-    private final Set<Class> typeSet = new HashSet<>();
-    private final Plugin proxy;
+    private final Set<Class> mapping = new HashSet<>();
+    private final JavaPlugin plugin;
+    private final boolean managed;
+    private final UUID id = UUID.randomUUID();
 
+    private HikariDataSource pool;
     private String heartbeat;
     private String name;
     private String driver;
@@ -35,24 +43,26 @@ public class EbeanHandler {
     private IsolationLevel isolationLevel;
     private EbeanServer server;
 
-    public EbeanHandler(Plugin proxy) {
-        this.proxy = proxy;
+    EbeanHandler(JavaPlugin plugin, boolean managed) {
+        name = plugin.getName() + '@' + id;
+        this.plugin = plugin;
+        this.managed = managed;
     }
 
-    public EbeanHandler(JavaPlugin proxy) {
-        this(Plugin.class.cast(proxy));
+    public EbeanHandler(JavaPlugin plugin) {
+        this(plugin, false);
     }
 
     @Override
     public String toString() {
-        return getName() + ", " + url + ", " + userName + ", " + (server != null);
+        return "ORM(" + name + ", " + url + ", " + userName + ", ready = " + !(server == null) + ")";
     }
 
     public void define(Class<?> in) {
         if (server != null) {
             throw new NullPointerException("Already initialized!");
         }
-        typeSet.add(in);
+        mapping.add(in);
     }
 
     public <T> Query<T> find(Class<T> in) {
@@ -68,13 +78,13 @@ public class EbeanHandler {
             throw new NullPointerException("Not initialized!");
         }
         try {
-            PluginDescriptionFile desc = proxy.getDescription();
+            PluginDescriptionFile desc = plugin.getDescription();
             if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
                 desc.getClass().getMethod("setDatabaseEnabled", boolean.class).invoke(desc, true);
             }
-            Reflect.replace(proxy, server);
+            Reflect.replace(plugin, server);
         } catch (Exception e) {
-            proxy.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式|" + e.toString());
+            plugin.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式|" + e.toString());
         }
     }
 
@@ -87,7 +97,7 @@ public class EbeanHandler {
             DdlGenerator gen = spi.getDdlGenerator();
             gen.runScript(true, gen.generateDropDdl());
         } catch (Exception e) {
-            proxy.getLogger().info(e.getMessage());
+            plugin.getLogger().info(e.getMessage());
         }
     }
 
@@ -101,16 +111,16 @@ public class EbeanHandler {
             throw new NullPointerException("Not initialized!");
         }
         try {
-            for (Class<?> line : typeSet) {
+            for (Class<?> line : mapping) {
                 server.find(line).setMaxRows(1).findUnique();
             }
-            proxy.getLogger().info("Tables already exists!");
+            plugin.getLogger().info("Tables already exists!");
         } catch (Exception e) {
-            proxy.getLogger().info(e.getMessage());
-            proxy.getLogger().info("Start create tables, wait...");
+            plugin.getLogger().info(e.getMessage());
+            plugin.getLogger().info("Start create tables, wait...");
             DdlGenerator gen = SpiEbeanServer.class.cast(server).getDdlGenerator();
             gen.runScript(ignore, gen.generateCreateDdl());
-            proxy.getLogger().info("Create tables done!");
+            plugin.getLogger().info("Create tables done!");
         }
     }
 
@@ -118,28 +128,32 @@ public class EbeanHandler {
         install(false);
     }
 
-    public void initialize(String name) throws DatabaseException {
+    public void initialize() throws DatabaseException {
         if (!(server == null)) {
             throw new DatabaseException("Already initialized!");
-        } else if (typeSet.size() < 1) {
+        }
+        if (mapping.size() < 1) {
             throw new DatabaseException("Not define entity class!");
+        }
+        if (!(pool == null)) {
+            throw new DatabaseException("Already shutdown!");
         }
         // Hacked in newest modded server
         PolicyInjector.inject();
 
-        // Initialize handler name.
-        setName(name);
+        pool = new HikariDataSource();
 
-        HikariDataSource pool = new HikariDataSource();
-        ServerConfig config = new ServerConfig();
+        pool.setPoolName(name);
 
         pool.setConnectionTimeout(10_000);
         pool.setJdbcUrl(url);
         pool.setUsername(userName);
         pool.setPassword(password);
 
-        pool.setMaximumPoolSize(maxSize);
         pool.setMinimumIdle(coreSize);
+        pool.setMaximumPoolSize(maxSize);
+
+        val conf = new ServerConfig();
 
         if (url.startsWith("jdbc:sqlite:")) {
             // Fix compatible
@@ -147,8 +161,8 @@ public class EbeanHandler {
             pool.setConnectionTestQuery("select 1");
             pool.setDriverClassName("org.sqlite.JDBC");
             pool.setTransactionIsolation("TRANSACTION_SERIALIZABLE");
-            config.setDatabasePlatform(new SQLitePlatform());
-            config.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+            conf.setDatabasePlatform(new SQLitePlatform());
+            conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
         } else {
             if (!(driver == null)) {
                 pool.setDriverClassName(driver);
@@ -161,25 +175,23 @@ public class EbeanHandler {
             }
 
         }
-        config.setName(name);
-        config.setDataSource(pool);
 
-        for (Class<?> type : typeSet) {
-            config.addClass(type);
+        conf.setName(name);
+        conf.setDataSource(pool);
+
+        for (Class<?> type : mapping) {
+            conf.addClass(type);
         }
 
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        ClassLoader ctx = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(Reflect.getLoader(proxy));
+            Thread.currentThread().setContextClassLoader(Reflect.getLoader(plugin));
+            server = EbeanServerFactory.create(conf);
         } catch (Exception e) {
             throw new DatabaseException(e);
+        } finally {
+            Thread.currentThread().setContextClassLoader(ctx);
         }
-        server = EbeanServerFactory.create(config);
-        Thread.currentThread().setContextClassLoader(loader);
-    }
-
-    public void initialize() throws DatabaseException {
-        initialize(getProxy().getName());
     }
 
     public void save(Object in) {
@@ -238,8 +250,8 @@ public class EbeanHandler {
         return server == null;
     }
 
-    public Plugin getProxy() {
-        return proxy;
+    public Plugin getPlugin() {
+        return plugin;
     }
 
     public String getName() {
@@ -276,6 +288,26 @@ public class EbeanHandler {
     @Deprecated
     public void setHeartbeat(String heartbeat) {
         this.heartbeat = heartbeat;
+    }
+
+    /**
+     * @deprecated not very recommend to call this method manual, it will shutdown automatic while JVM down
+     */
+    @Deprecated
+    public void shutdown() throws DatabaseException {
+        try {
+            if (server == null) throw new DatabaseException("Not initialized!");
+            val clz = Class.forName("com.avaje.ebeaninternal.server.core.DefaultServer$Shutdown");
+            val i = clz.getDeclaredConstructor(DefaultServer.class);
+            i.setAccessible(true);
+            ((Runnable) i.newInstance(server)).run();
+            pool.close();
+            if (managed) {
+                EbeanManager.shutdown(this);
+            }
+        } catch (Exception e) {
+            throw new DatabaseException(e);
+        }
     }
 
     public void setIsolationLevel(IsolationLevel isolationLevel) {
