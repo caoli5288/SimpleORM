@@ -40,13 +40,9 @@ public class ORM extends JavaPlugin {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         val manager = EbeanManager.DEFAULT;
-        val l = manager.handers();
+        val l = manager.map;
         if (!l.isEmpty()) {
-            for (EbeanHandler handler : manager.handers()) {
-                sender.sendMessage("[SimpleORM] " + handler);
-            }
-        } else {
-            sender.sendMessage("[SimpleORM] No registered handler!");
+            l.forEach((key, handler) -> sender.sendMessage("[" + key + "] -> " + handler));
         }
         return true;
     }

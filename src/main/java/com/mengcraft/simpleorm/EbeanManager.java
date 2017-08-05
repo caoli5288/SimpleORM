@@ -14,7 +14,7 @@ public class EbeanManager {
     public static final String USERNAME = "user";
     public static final String PASSWORD = "passwd";
 
-    private final Map<String, EbeanHandler> map = new HashMap<>();
+    final Map<String, EbeanHandler> map = new HashMap<>();
 
     private EbeanManager() {
     }
