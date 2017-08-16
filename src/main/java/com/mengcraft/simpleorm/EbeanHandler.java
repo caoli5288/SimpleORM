@@ -150,16 +150,17 @@ public class EbeanHandler {
         pool.setUsername(userName);
         pool.setPassword(password);
 
+        pool.setAutoCommit(false);
         pool.setMinimumIdle(coreSize);
         pool.setMaximumPoolSize(maxSize);
 
         val conf = new ServerConfig();
 
         if (url.startsWith("jdbc:sqlite:")) {
-            // Fix compatible
-            pool.setAutoCommit(false);
+            // Fix ebean-2.7(at bukkit-1.7.10) compatible
             pool.setConnectionTestQuery("select 1");
             pool.setDriverClassName("org.sqlite.JDBC");
+            //
             pool.setTransactionIsolation("TRANSACTION_SERIALIZABLE");
             conf.setDatabasePlatform(new SQLitePlatform());
             conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
