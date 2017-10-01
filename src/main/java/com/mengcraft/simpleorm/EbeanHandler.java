@@ -10,15 +10,18 @@ import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.val;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 @EqualsAndHashCode(of = "id")
@@ -58,9 +61,21 @@ public class EbeanHandler {
         return "ORM(" + name + ", " + url + ", " + userName + ", ready = " + !(server == null) + ")";
     }
 
+    /**
+     * @param consumer notice commit or it will rollback automatic at block end
+     */
+    public void connection(Consumer<Connection> consumer) {
+        val tx = getServer().beginTransaction();
+        try {
+            consumer.accept(tx.getConnection());
+        } finally {
+            tx.end();
+        }
+    }
+
     public void define(Class<?> in) {
-        if (server != null) {
-            throw new NullPointerException("Already initialized!");
+        if (isInitialized()) {
+            throw new IllegalStateException("Already initialized!");
         }
         mapping.add(in);
     }
@@ -74,9 +89,7 @@ public class EbeanHandler {
     }
 
     public void reflect() {
-        if (server == null) {
-            throw new NullPointerException("Not initialized!");
-        }
+        validInitialized();
         try {
             PluginDescriptionFile desc = plugin.getDescription();
             if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
@@ -89,9 +102,7 @@ public class EbeanHandler {
     }
 
     public void uninstall() {
-        if (server == null) {
-            throw new NullPointerException("Not initialized!");
-        }
+        validInitialized();
         try {
             SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
             DdlGenerator gen = spi.getDdlGenerator();
@@ -107,9 +118,7 @@ public class EbeanHandler {
      * @param ignore Ignore exception when run create table.
      */
     public void install(boolean ignore) {
-        if (server == null) {
-            throw new NullPointerException("Not initialized!");
-        }
+        validInitialized();
         try {
             for (Class<?> line : mapping) {
                 server.find(line).setMaxRows(1).findUnique();
@@ -232,9 +241,7 @@ public class EbeanHandler {
     }
 
     public EbeanServer getServer() {
-        if (server == null) {
-            throw new NullPointerException("Not initialized!");
-        }
+        validInitialized();
         return server;
     }
 
@@ -244,11 +251,15 @@ public class EbeanHandler {
     }
 
     public boolean isInitialized() {
-        return server != null;
+        return !isNotInitialized();
     }
 
     public boolean isNotInitialized() {
         return server == null;
+    }
+
+    public void validInitialized() {
+        if (isNotInitialized()) throw new IllegalStateException("Not initialized!");
     }
 
     public Plugin getPlugin() {
@@ -263,10 +274,7 @@ public class EbeanHandler {
         return getServer().createEntityBean(in);
     }
 
-    private void setName(String name) {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
+    private void setName(@NonNull String name) {
         this.name = name;
     }
 
@@ -286,7 +294,10 @@ public class EbeanHandler {
         this.maxSize = maxSize;
     }
 
-    @Deprecated
+    /**
+     * @param heartbeat the heartbeat sql
+     * @deprecated hikari-cp will heartbeat automatic
+     */
     public void setHeartbeat(String heartbeat) {
         this.heartbeat = heartbeat;
     }
@@ -296,15 +307,15 @@ public class EbeanHandler {
      */
     @Deprecated
     public void shutdown() throws DatabaseException {
+        validInitialized();
         try {
-            if (server == null) throw new DatabaseException("Not initialized!");
             val clz = Class.forName("com.avaje.ebeaninternal.server.core.DefaultServer$Shutdown");
             val i = clz.getDeclaredConstructor(DefaultServer.class);
             i.setAccessible(true);
             ((Runnable) i.newInstance(server)).run();
             pool.close();
             if (managed) {
-                EbeanManager.shutdown(this);
+                EbeanManager.unHandle(this);
             }
         } catch (Exception e) {
             throw new DatabaseException(e);

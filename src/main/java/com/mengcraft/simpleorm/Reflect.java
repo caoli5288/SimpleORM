@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
+import com.mengcraft.simpleorm.lib.RefHelper;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -14,10 +15,8 @@ public final class Reflect {
         server.set(proxy, in);
     }
 
-    public static ClassLoader getLoader(Plugin in) throws Exception {
-        Field loader = JavaPlugin.class.getDeclaredField("classLoader");
-        loader.setAccessible(true);
-        return ClassLoader.class.cast(loader.get(in));
+    public static ClassLoader getLoader(Plugin plugin) throws Exception {
+        return RefHelper.getField(plugin, "classLoader");
     }
 
 }

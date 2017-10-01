@@ -1,13 +1,15 @@
 package com.mengcraft.simpleorm.lib;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.ToString;
 import lombok.val;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,22 +18,27 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 /**
  * Created on 17-6-26.
  */
 @Data
+@EqualsAndHashCode(exclude = {"file", "sublist", "clazz"})
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@ToString(exclude = {"file", "sublist", "clazz"})
 public class MavenLibrary extends Library {
 
     private final String repository;
     private final String group;
     private final String artifact;
     private final String version;
+    private final String clazz;
+
     private File file;
+    private List<Library> sublist;
 
     @Override
     public File getFile() {
@@ -48,26 +55,38 @@ public class MavenLibrary extends Library {
     @SneakyThrows
     @Override
     public List<Library> getSublist() {
-        File pom = new File(getFile().getParentFile(), getFile().getName() + ".pom");
-        Node root = XMLHelper.getDocumentBy(pom).getFirstChild();
+        if (sublist == null) {
+            val xml = new File(getFile().getParentFile(), getFile().getName() + ".pom");
+            val pom = XMLHelper.getDocumentBy(xml).getFirstChild();
 
-        Element all = XMLHelper.getElementBy(root, "dependencies");
-        if (all == null) return ImmutableList.of();
+            val all = XMLHelper.getElementBy(pom, "dependencies");
+            if (all == null) return (sublist = ImmutableList.of());
+            val p = XMLHelper.getElementBy(pom, "properties");
+            Builder<Library> b = ImmutableList.builder();
 
-        ImmutableList.Builder<Library> b = ImmutableList.builder();
+            val list = XMLHelper.getElementListBy(all, "dependency");
+            for (val depend : list) {
+                val scope = XMLHelper.getElementValue(depend, "scope");
+                if (scope == null || scope.equals("compile")) {
+                    String version = XMLHelper.getElementValue(depend, "version");
+                    if (version == null) throw new NullPointerException();
 
-        for (Element depend : XMLHelper.getElementListBy(all, "dependency")) {
-            String scope = XMLHelper.getElementValue(depend, "scope");
-            if (scope == null || scope.equals("compile")) {
-                b.add(new MavenLibrary(repository,
-                        XMLHelper.getElementValue(depend, "groupId"),
-                        XMLHelper.getElementValue(depend, "artifactId"),
-                        XMLHelper.getElementValue(depend, "version")
-                ));
+                    // TODO Request any placeholder support
+                    if (version.startsWith("${")) {
+                        val sub = version.substring(2, version.length() - 1);
+                        version = XMLHelper.getElementValue(p, sub);
+                    }
+                    b.add(new MavenLibrary(repository,
+                            XMLHelper.getElementValue(depend, "groupId"),
+                            XMLHelper.getElementValue(depend, "artifactId"),
+                            version,
+                            null
+                    ));
+                }
             }
+            sublist = b.build();
         }
-
-        return b.build();
+        return sublist;
     }
 
     @SneakyThrows
@@ -76,7 +95,12 @@ public class MavenLibrary extends Library {
             throw new IOException("mkdir");
         }
 
-        val lib = repository
+        loadFile(ImmutableSet.of(repository, Repository.CENTRAL.repository, Repository.I7MC.repository).iterator());
+    }
+
+    void loadFile(Iterator<String> repo) throws IOException {
+        val url = repo.next()
+                + '/'
                 + group.replace('.', '/')
                 + '/'
                 + artifact
@@ -84,32 +108,23 @@ public class MavenLibrary extends Library {
                 + version
                 + '/'
                 + artifact + '-' + version;
+        try {
+            Files.copy(new URL(url + ".jar").openStream(),
+                    getFile().toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(new URL(url + ".jar.md5").openStream(),
+                    new File(getFile().getParentFile(), getFile().getName() + ".md5").toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(new URL(url + ".pom").openStream(),
+                    new File(getFile().getParentFile(), getFile().getName() + ".pom").toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
 
-        Files.copy(new URL(lib + ".jar").openStream(),
-                getFile().toPath(),
-                StandardCopyOption.REPLACE_EXISTING);
-
-        Files.copy(new URL(lib + ".jar.md5").openStream(),
-                new File(getFile().getParentFile(), getFile().getName() + ".md5").toPath(),
-                StandardCopyOption.REPLACE_EXISTING);
-
-        Files.copy(new URL(lib + ".pom").openStream(),
-                new File(getFile().getParentFile(), getFile().getName() + ".pom").toPath(),
-                StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    private static final char[] HEX = {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'a', 'b', 'c', 'd', 'e', 'f'
-    };
-
-    protected String hex(byte[] out) {
-        StringBuilder buf = new StringBuilder();
-        for (byte b : out) {
-            buf.append(HEX[b >>> 4 & 0xf]);
-            buf.append(HEX[b & 0xf]);
+        } catch (IOException io) {
+            if (!repo.hasNext()) {
+                throw new IOException("NO MORE REPOSITORY TO TRY", io);
+            }
+            loadFile(repo);
         }
-        return buf.toString();
     }
 
     @SneakyThrows
@@ -117,25 +132,36 @@ public class MavenLibrary extends Library {
         if (getFile().isFile()) {
             val check = new File(file.getParentFile(), file.getName() + ".md5");
             if (check.isFile()) {
-                val digest = MessageDigest.getInstance("MD5");
                 val buf = ByteBuffer.allocate(1 << 16);
                 FileChannel channel = FileChannel.open(file.toPath());
                 while (!(channel.read(buf) == -1)) {
                     buf.flip();
-                    digest.update(buf);
+                    MD5.update(buf);
                     buf.compact();
                 }
-                return Files.newBufferedReader(check.toPath()).readLine().equals(hex(digest.digest()));
+                return Files.newBufferedReader(check.toPath()).readLine().equals(MD5.digest());
             }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean present() {
+        if (clazz == null || clazz.isEmpty()) return false;
+        try {
+            val result = Class.forName(clazz);
+            return !(result == null);
+        } catch (Exception ign) {
         }
         return false;
     }
 
     public enum Repository {
 
-        CENTRAL("http://central.maven.org/maven2/");
+        CENTRAL("http://central.maven.org/maven2"),
+        I7MC("http://ci.mengcraft.com:8080/plugin/repository/everything");
 
-        private final String repository;
+        final String repository;
 
         Repository(String repository) {
             this.repository = repository;
@@ -148,9 +174,9 @@ public class MavenLibrary extends Library {
 
     public static MavenLibrary of(String repository, String description) {
         val split = description.split(":");
-        if (!(split.length == 3)) throw new IllegalArgumentException(description);
+        if (!(split.length == 3 || split.length == 4)) throw new IllegalArgumentException(description);
         val itr = Arrays.asList(split).iterator();
-        return new MavenLibrary(repository, itr.next(), itr.next(), itr.next());
+        return new MavenLibrary(repository, itr.next(), itr.next(), itr.next(), itr.hasNext() ? itr.next() : null);
     }
 
 }

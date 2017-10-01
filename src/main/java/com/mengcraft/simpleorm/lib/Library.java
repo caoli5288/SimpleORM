@@ -10,17 +10,21 @@ import java.util.List;
  */
 public abstract class Library {
 
-    public abstract File getFile();
-
-    public void init() {
-    }
-
-    public boolean isLoadable() {
-        return true;
-    }
-
     public List<Library> getSublist() {
         return ImmutableList.of();
     }
 
+    public boolean isLoadable() {
+        return getFile().isFile();
+    }
+
+    public boolean present() {
+        return false;
+    }
+
+    public void init() {
+        throw new UnsupportedOperationException("init");
+    }
+
+    public abstract File getFile();
 }

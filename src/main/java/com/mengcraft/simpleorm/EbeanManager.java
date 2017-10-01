@@ -75,7 +75,7 @@ public class EbeanManager {
         return out;
     }
 
-    static void shutdown(EbeanHandler db) {
+    static void unHandle(EbeanHandler db) {
         DEFAULT.map.remove(db.getPlugin().getName(), db);
     }
 
