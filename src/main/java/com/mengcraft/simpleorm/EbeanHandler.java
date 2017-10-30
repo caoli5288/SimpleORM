@@ -19,6 +19,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -90,6 +91,10 @@ public class EbeanHandler {
 
     public void reflect() {
         validInitialized();
+        if (!managed) {
+            plugin.getLogger().warning("自定义连接不能注入到端");
+            return;
+        }
         try {
             PluginDescriptionFile desc = plugin.getDescription();
             if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
@@ -328,6 +333,17 @@ public class EbeanHandler {
 
     public IsolationLevel getIsolationLevel() {
         return this.isolationLevel;
+    }
+
+    public static EbeanHandler build(@NonNull JavaPlugin plugin, @NonNull Map<String, String> map) {
+        val out = new EbeanHandler(plugin);
+        out.setUrl(map.get("url"));
+        out.setUserName(map.getOrDefault("userName", map.get("username")));
+        out.setPassword(map.get("password"));
+        if (map.containsKey("driver")) {
+            out.setDriver(map.get("driver"));
+        }
+        return out;
     }
 
 }
