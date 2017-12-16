@@ -12,6 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 
 public class ORM extends JavaPlugin {
 
@@ -62,7 +63,7 @@ public class ORM extends JavaPlugin {
 
         LIST("list") {
             void exec(CommandSender who, Iterator<String> itr) {
-                val all = EbeanManager.DEFAULT.map;
+                Map<String, EbeanHandler> all = EbeanManager.DEFAULT.map;
                 if (!all.isEmpty()) {
                     all.forEach((key, handler) -> who.sendMessage("[" + key + "] -> " + handler));
                 }
