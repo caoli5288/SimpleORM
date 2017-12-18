@@ -45,7 +45,7 @@ public class ORM extends JavaPlugin {
     public boolean onCommand(CommandSender who, Command command, String label, String[] input) {
         if (input.length < 1) {
             for (val executor : SubExecutor.values()) {
-                who.sendMessage('/' + label + executor.usage);
+                who.sendMessage('/' + label + ' ' + executor.usage);
             }
         } else {
             try {
