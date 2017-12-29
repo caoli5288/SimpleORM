@@ -38,7 +38,7 @@ public class EbeanHandler {
     private String name;
     private String driver;
     private String url;
-    private String userName;
+    private String user;
     private String password;
 
     private int coreSize = 1;
@@ -59,7 +59,7 @@ public class EbeanHandler {
 
     @Override
     public String toString() {
-        return "ORM(" + name + ", " + url + ", " + userName + ", ready = " + !(server == null) + ")";
+        return "ORM(" + name + ", " + url + ", " + user + ", ready = " + !(server == null) + ")";
     }
 
     /**
@@ -161,7 +161,7 @@ public class EbeanHandler {
 
         pool.setConnectionTimeout(10_000);
         pool.setJdbcUrl(url);
-        pool.setUsername(userName);
+        pool.setUsername(user);
         pool.setPassword(password);
 
         pool.setAutoCommit(false);
@@ -237,8 +237,15 @@ public class EbeanHandler {
         this.url = url;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    /**
+     * @deprecated {@code setUser}
+     */
+    public void setUserName(String user) {
+        this.user = user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
     }
 
     public void setPassword(String password) {
@@ -338,7 +345,7 @@ public class EbeanHandler {
     public static EbeanHandler build(@NonNull JavaPlugin plugin, @NonNull Map<String, String> map) {
         val out = new EbeanHandler(plugin);
         out.setUrl(map.get("url"));
-        out.setUserName(map.getOrDefault("userName", map.get("username")));
+        out.setUser(map.getOrDefault("userName", map.get("username")));
         out.setPassword(map.get("password"));
         if (map.containsKey("driver")) {
             out.setDriver(map.get("driver"));

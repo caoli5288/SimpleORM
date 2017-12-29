@@ -19,6 +19,11 @@ public class ORM extends JavaPlugin {
     @Override
     public void onLoad() {
         loadLibrary(this);
+        saveDefaultConfig();
+
+        EbeanManager.url = getConfig().getString("dataSource.url", "jdbc:mysql://localhost/db");
+        EbeanManager.user = getConfig().getString("dataSource.user", "root");
+        EbeanManager.password = getConfig().getString("dataSource.password", "wowsuchpassword");
 
         getServer().getServicesManager().register(EbeanManager.class,
                 EbeanManager.DEFAULT,
