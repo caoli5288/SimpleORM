@@ -19,6 +19,11 @@ public class ORM extends JavaPlugin {
     @Override
     public void onLoad() {
         loadLibrary(this);
+        saveDefaultConfig();
+
+        EbeanManager.url = getConfig().getString("dataSource.url", "jdbc:mysql://localhost/db");
+        EbeanManager.user = getConfig().getString("dataSource.user", "root");
+        EbeanManager.password = getConfig().getString("dataSource.password", "wowsuchpassword");
 
         getServer().getServicesManager().register(EbeanManager.class,
                 EbeanManager.DEFAULT,
@@ -45,7 +50,7 @@ public class ORM extends JavaPlugin {
     public boolean onCommand(CommandSender who, Command command, String label, String[] input) {
         if (input.length < 1) {
             for (val executor : SubExecutor.values()) {
-                who.sendMessage('/' + label + executor.usage);
+                who.sendMessage('/' + label + ' ' + executor.usage);
             }
         } else {
             try {

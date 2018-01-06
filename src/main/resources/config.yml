@@ -1,0 +1,4 @@
+dataSource:
+  url: jdbc:mysql://localhost/db
+  user: root
+  password: wowsuchpassword

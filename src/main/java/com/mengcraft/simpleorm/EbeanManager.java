@@ -10,9 +10,9 @@ public class EbeanManager {
 
     public static final EbeanManager DEFAULT = new EbeanManager();
 
-    public static final String URL = "jdbc:mysql://localhost/db";
-    public static final String USERNAME = "user";
-    public static final String PASSWORD = "passwd";
+    static String url = "jdbc:mysql://localhost/db";
+    static String user = "user";
+    static String password = "passwd";
 
     final Map<String, EbeanHandler> map = new HashMap<>();
 
@@ -39,27 +39,32 @@ public class EbeanManager {
         val out = new EbeanHandler(plugin, true);
 
         String url = plugin.getConfig().getString("dataSource.url");
-        String u = plugin.getConfig().getString("dataSource.userName");
+
+        String user = plugin.getConfig().getString("dataSource.user");
+        if (user == null) {
+            user = plugin.getConfig().getString("dataSource.userName");
+        }
+
         String password = plugin.getConfig().getString("dataSource.password");
 
-        val driver = plugin.getConfig().getString("dataSource.driver");
+        String driver = plugin.getConfig().getString("dataSource.driver");
 
         boolean b = false;
 
         if (url == null) {
-            plugin.getConfig().set("dataSource.url", url = URL);
+            plugin.getConfig().set("dataSource.url", url = EbeanManager.url);
             b = true;
         }
         out.setUrl(url);
 
-        if (u == null) {
-            plugin.getConfig().set("dataSource.userName", u = USERNAME);
+        if (user == null) {
+            plugin.getConfig().set("dataSource.user", user = EbeanManager.user);
             b = true;
         }
-        out.setUserName(u);
+        out.setUser(user);
 
         if (password == null) {
-            plugin.getConfig().set("dataSource.password", password = PASSWORD);
+            plugin.getConfig().set("dataSource.password", password = EbeanManager.password);
             b = true;
         }
         out.setPassword(password);
