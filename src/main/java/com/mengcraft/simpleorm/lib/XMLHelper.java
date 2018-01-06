@@ -57,6 +57,13 @@ public class XMLHelper {
         return null;
     }
 
+    public static Node getSubNode(Node node, String name) {
+        Node out = node.getFirstChild();
+        while (!out.getNodeName().equals(name)) {
+            out = out.getNextSibling();
+        }
+        return out;
+    }
 
     public static String getElementValue(Element element, String tag) {
         Element by = getElementBy(element, tag);

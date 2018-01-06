@@ -3,6 +3,7 @@ package com.mengcraft.simpleorm.lib;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,10 +15,9 @@ import lombok.val;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -57,11 +57,12 @@ public class MavenLibrary extends Library {
     public List<Library> getSublist() {
         if (sublist == null) {
             val xml = new File(getFile().getParentFile(), getFile().getName() + ".pom");
-            val pom = XMLHelper.getDocumentBy(xml).getFirstChild();
+            val project = XMLHelper.getSubNode(XMLHelper.getDocumentBy(xml), "project");
 
-            val all = XMLHelper.getElementBy(pom, "dependencies");
+            val all = XMLHelper.getElementBy(project, "dependencies");
             if (all == null) return (sublist = ImmutableList.of());
-            val p = XMLHelper.getElementBy(pom, "properties");
+
+            val p = XMLHelper.getElementBy(project, "properties");
             Builder<Library> b = ImmutableList.builder();
 
             val list = XMLHelper.getElementListBy(all, "dependency");
@@ -71,11 +72,12 @@ public class MavenLibrary extends Library {
                     String version = XMLHelper.getElementValue(depend, "version");
                     if (version == null) throw new NullPointerException();
 
-                    // TODO Request any placeholder support
                     if (version.startsWith("${")) {
                         val sub = version.substring(2, version.length() - 1);
                         version = XMLHelper.getElementValue(p, sub);
                     }
+                    if (version == null) throw new NullPointerException();
+
                     b.add(new MavenLibrary(repository,
                             XMLHelper.getElementValue(depend, "groupId"),
                             XMLHelper.getElementValue(depend, "artifactId"),
@@ -130,16 +132,13 @@ public class MavenLibrary extends Library {
     @SneakyThrows
     public boolean isLoadable() {
         if (getFile().isFile()) {
-            val check = new File(file.getParentFile(), file.getName() + ".md5");
-            if (check.isFile()) {
-                val buf = ByteBuffer.allocate(1 << 16);
-                FileChannel channel = FileChannel.open(file.toPath());
-                while (!(channel.read(buf) == -1)) {
-                    buf.flip();
-                    MD5.update(buf);
-                    buf.compact();
-                }
-                return Files.newBufferedReader(check.toPath()).readLine().equals(MD5.digest());
+            val md5 = new File(file.getParentFile(), file.getName() + ".md5");
+            if (md5.isFile()) {
+                byte[] buf = Files.readAllBytes(file.toPath());
+                MessageDigest d = MessageDigestLocal.algorithm("md5");
+                String result = Hex.hex(d.digest(buf));
+                String l = Files.newBufferedReader(md5.toPath()).readLine();
+                return l.indexOf(' ') == -1 ? l.equals(result) : Iterators.forArray(l.split(" ")).next().equals(result);
             }
         }
         return false;
