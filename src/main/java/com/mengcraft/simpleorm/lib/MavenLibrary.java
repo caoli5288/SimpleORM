@@ -57,15 +57,15 @@ public class MavenLibrary extends Library {
     public List<Library> getSublist() {
         if (sublist == null) {
             val xml = new File(getFile().getParentFile(), getFile().getName() + ".pom");
-            val project = XMLHelper.getSubNode(XMLHelper.getDocumentBy(xml), "project");
+            val project = XMLHelper.getSubNode(XMLHelper.getDocument(xml), "project");
 
-            val all = XMLHelper.getElementBy(project, "dependencies");
+            val all = XMLHelper.getElement(project, "dependencies");
             if (all == null) return (sublist = ImmutableList.of());
 
-            val p = XMLHelper.getElementBy(project, "properties");
+            val p = XMLHelper.getElement(project, "properties");
             Builder<Library> b = ImmutableList.builder();
 
-            val list = XMLHelper.getElementListBy(all, "dependency");
+            val list = XMLHelper.getElementList(all, "dependency");
             for (val depend : list) {
                 val scope = XMLHelper.getElementValue(depend, "scope");
                 if (scope == null || scope.equals("compile")) {

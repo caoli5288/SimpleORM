@@ -19,7 +19,7 @@ import java.util.List;
  */
 public class XMLHelper {
 
-    public static List<Element> getElementListBy(Node node, String tag) {
+    public static List<Element> getElementList(Node node, String tag) {
         if (!node.hasChildNodes()) return ImmutableList.of();
         ImmutableList.Builder<Element> b = ImmutableList.builder();
         NodeList list = node.getChildNodes();
@@ -34,17 +34,17 @@ public class XMLHelper {
     }
 
     @SneakyThrows
-    public static Document getDocumentBy(InputStream input) {
+    public static Document getDocument(InputStream input) {
         DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         return builder.parse(input);
     }
 
     @SneakyThrows
-    public static Document getDocumentBy(File input) {
-        return getDocumentBy(new FileInputStream(input));
+    public static Document getDocument(File input) {
+        return getDocument(new FileInputStream(input));
     }
 
-    public static Element getElementBy(Node node, String tag) {
+    public static Element getElement(Node node, String tag) {
         if (!node.hasChildNodes()) return null;
         NodeList list = node.getChildNodes();
         for (int i = 0; i < list.getLength(); i++) {
@@ -59,14 +59,14 @@ public class XMLHelper {
 
     public static Node getSubNode(Node node, String name) {
         Node out = node.getFirstChild();
-        while (!out.getNodeName().equals(name)) {
+        while (!(out == null) && !out.getNodeName().equals(name)) {
             out = out.getNextSibling();
         }
-        return out;
+        return out == null || !out.getNodeName().equals(name) ? null : out;
     }
 
     public static String getElementValue(Element element, String tag) {
-        Element by = getElementBy(element, tag);
+        Element by = getElement(element, tag);
         if (!(by == null)) {
             return by.getFirstChild().getNodeValue();
         }
