@@ -4,6 +4,7 @@ import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -33,11 +34,18 @@ public class ORM extends JavaPlugin {
 
     public static void loadLibrary(JavaPlugin plugin) {
         try {
-            Class.forName("com.avaje.ebean.EbeanServer");
+            Class<?> loaded = Bukkit.class.getClassLoader().loadClass("com.avaje.ebean.EbeanServer");
+            if (loaded == null) {
+                loadExtLibrary(plugin);
+            }
         } catch (ClassNotFoundException e) {
-            LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"));
+            loadExtLibrary(plugin);
         }
         plugin.getLogger().info("ORM lib load okay!");
+    }
+
+    private static void loadExtLibrary(JavaPlugin plugin) {
+        LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"), true);
     }
 
     @Override

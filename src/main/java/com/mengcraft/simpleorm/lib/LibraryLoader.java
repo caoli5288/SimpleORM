@@ -2,12 +2,14 @@ package com.mengcraft.simpleorm.lib;
 
 import lombok.SneakyThrows;
 import lombok.val;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.mengcraft.simpleorm.lib.RefHelper.getField;
 import static com.mengcraft.simpleorm.lib.RefHelper.invoke;
 
 
@@ -17,7 +19,7 @@ import static com.mengcraft.simpleorm.lib.RefHelper.invoke;
 public class LibraryLoader {
 
     @SneakyThrows
-    public static void load(JavaPlugin plugin, Library library) {
+    public static void load(JavaPlugin plugin, Library library, boolean global) {
         if (library.present()) {
             plugin.getLogger().info("Library " + library + " present");
         } else {
@@ -26,11 +28,11 @@ public class LibraryLoader {
             }
 
             for (Library sub : library.getSublist()) {
-                load(plugin, sub);
+                load(plugin, sub, global);
             }
 
             val lib = library.getFile();
-            invoke(plugin.getClass().getClassLoader(), "addURL", lib.toURI().toURL());
+            invoke(global ? Bukkit.class.getClassLoader() : getField(plugin, "classLoader"), "addURL", lib.toURI().toURL());
 
             plugin.getLogger().info("Load library " + lib + " done");
         }
