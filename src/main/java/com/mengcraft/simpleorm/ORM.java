@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import com.avaje.ebean.EbeanServer;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import lombok.SneakyThrows;
@@ -8,14 +9,21 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.persistence.Entity;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 public class ORM extends JavaPlugin {
+
+    private static Set<Class<?>> global;
+    private static EbeanHandler globalHandler;
 
     @Override
     public void onLoad() {
@@ -53,6 +61,12 @@ public class ORM extends JavaPlugin {
     public void onEnable() {
         getCommand("simpleorm").setExecutor(this);
         new MetricsLite(this).start();
+        if (!(global == null) && globalHandler == null) {// always not empty if not null
+            globalHandler = EbeanManager.DEFAULT.getHandler(this);
+            global.forEach(globalHandler::define);
+            globalHandler.initialize();
+            globalHandler.install(true);
+        }
     }
 
     public boolean onCommand(CommandSender who, Command command, String label, String[] input) {
@@ -70,6 +84,28 @@ public class ORM extends JavaPlugin {
             }
         }
         return false;
+    }
+
+    /**
+     * Plz call this method in {@link Plugin#onLoad()}.
+     *
+     * @param input the entity bean class
+     */
+    public static void global(Class<?> input) {
+        Entity annotation = input.getAnnotation(Entity.class);
+        if (annotation == null) throw new IllegalStateException(input + " NOT an entity class");
+
+        if (global == null) global = new HashSet<>();
+        global.add(input);
+    }
+
+    /**
+     * Plz call this method in or after {@link Plugin#onEnable()}.
+     *
+     * @return the global server
+     */
+    public static EbeanServer globalDataServer() {
+        return globalHandler.getServer();// fast fail
     }
 
     enum SubExecutor {
