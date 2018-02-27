@@ -16,6 +16,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.persistence.Entity;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashSet;
@@ -77,6 +78,10 @@ public class EbeanHandler {
     public void define(Class<?> in) {
         if (isInitialized()) {
             throw new IllegalStateException("Already initialized!");
+        }
+        Entity annotation = in.getAnnotation(Entity.class);
+        if (annotation == null) {
+            throw new IllegalArgumentException("Not entity clazz! " + in);
         }
         mapping.add(in);
     }
