@@ -11,7 +11,7 @@ This is a sample project [xKit](https://github.com/caoli5288/xKit).
 If you want to use this library in your own plugin. code your main
 class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
 ```java
-public class MyPlugin extend JavaPlugin {
+public class MyPlugin extends JavaPlugin {
     
     @Override
     public void onEnable() {
@@ -54,7 +54,7 @@ public class MyPlugin extend JavaPlugin {
         // Ebean server.
         EbeanServer server = this.getDatabase();
         // EbeanServer server = handler.getServer();
-        ...
+        // ...
     }
     
     public void function() {
@@ -63,7 +63,8 @@ public class MyPlugin extend JavaPlugin {
                                 .eq("name", "zmy")
                                 .findUnique();
         System.out.print(my.getName());
-        ...
+        // ...
+    }
 }
 ```
 Code your entity class like this. See More [Example](https://github.com/ebean-orm/avaje-ebeanorm-examples/tree/master/a-basic/src/main/java/org/example/domain).
@@ -79,7 +80,6 @@ public class MyClass {
     private String name;
     
     // Put getter and setter.
-    ...
 }
 ```
 Configure field will create automatic in your plguin's default config file.

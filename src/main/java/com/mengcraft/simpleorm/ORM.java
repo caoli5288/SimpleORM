@@ -15,14 +15,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 public class ORM extends JavaPlugin {
 
-    private static Set<Class<?>> global;
     private static EbeanHandler globalHandler;
 
     @Override
@@ -60,10 +57,8 @@ public class ORM extends JavaPlugin {
     @SneakyThrows
     public void onEnable() {
         getCommand("simpleorm").setExecutor(this);
-        new MetricsLite(this).start();
-        if (!(global == null) && globalHandler == null) {// always not empty if not null
-            globalHandler = EbeanManager.DEFAULT.getHandler(this);
-            global.forEach(globalHandler::define);
+        new MetricsLite(this);
+        if (globalHandler != null) {
             globalHandler.initialize();
             globalHandler.install(true);
         }
@@ -91,12 +86,22 @@ public class ORM extends JavaPlugin {
      *
      * @param input the entity bean class
      */
-    public static void global(Class<?> input) {
-        Entity annotation = input.getAnnotation(Entity.class);
-        if (annotation == null) throw new IllegalStateException(input + " NOT an entity class");
+    public static synchronized void global(Class<?> input) {
+        ORM plugin = JavaPlugin.getPlugin(ORM.class);
+        if (plugin.isEnabled()) {
+            throw new IllegalStateException("isEnabled");
+        }
 
-        if (global == null) global = new HashSet<>();
-        global.add(input);
+        Entity annotation = input.getAnnotation(Entity.class);
+        if (annotation == null) {
+            throw new IllegalStateException(input + " is not @Entity");
+        }
+
+        if (globalHandler == null) {
+            globalHandler = EbeanManager.DEFAULT.getHandler(plugin);
+        }
+
+        globalHandler.define(input);
     }
 
     /**
