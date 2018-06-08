@@ -9,8 +9,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static com.mengcraft.simpleorm.lib.RefHelper.getField;
-import static com.mengcraft.simpleorm.lib.RefHelper.invoke;
+import static com.mengcraft.simpleorm.lib.Reflector.getField;
+import static com.mengcraft.simpleorm.lib.Reflector.invoke;
 
 
 /**

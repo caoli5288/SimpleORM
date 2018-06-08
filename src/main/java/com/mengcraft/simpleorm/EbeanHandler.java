@@ -17,6 +17,8 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.HashSet;
@@ -25,6 +27,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+
+import static com.mengcraft.simpleorm.lib.Reflector.invoke;
 
 @EqualsAndHashCode(of = "id")
 public class EbeanHandler {
@@ -203,14 +207,20 @@ public class EbeanHandler {
             conf.addClass(type);
         }
 
-        ClassLoader ctx = Thread.currentThread().getContextClassLoader();
+        ClassLoader mainctx = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(Reflect.getLoader(plugin));
+            URLClassLoader plugctx = (URLClassLoader) Reflect.getLoader(plugin);
+            mapping.forEach(clz -> {
+                for (URL jar : ((URLClassLoader) clz.getClassLoader()).getURLs()) {
+                    invoke(plugctx, "addURL", jar);
+                }
+            });
+            Thread.currentThread().setContextClassLoader(plugctx);
             server = EbeanServerFactory.create(conf);
         } catch (Exception e) {
             throw new DatabaseException(e);
         } finally {
-            Thread.currentThread().setContextClassLoader(ctx);
+            Thread.currentThread().setContextClassLoader(mainctx);
         }
     }
 

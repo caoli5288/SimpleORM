@@ -1,11 +1,12 @@
 package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
-import com.mengcraft.simpleorm.lib.RefHelper;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Field;
+
+import static com.mengcraft.simpleorm.lib.Reflector.getField;
 
 public final class Reflect {
 
@@ -16,7 +17,7 @@ public final class Reflect {
     }
 
     public static ClassLoader getLoader(Plugin plugin) throws Exception {
-        return RefHelper.getField(plugin, "classLoader");
+        return getField(plugin, "classLoader");
     }
 
 }
