@@ -8,7 +8,7 @@
     <repositories>
         <repository>
             <id>bukkit-ci</id>
-            <url>http://ci.mengcraft.com:8080/plugin/repository/everything/</url>
+            <url>http://ci.mengcraft.com:8081/plugin/repository/everything/</url>
         </repository>
     </repositories>
 
