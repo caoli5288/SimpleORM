@@ -20,12 +20,12 @@ import javax.persistence.Entity;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import static com.mengcraft.simpleorm.lib.Reflector.invoke;
@@ -68,15 +68,14 @@ public class EbeanHandler {
     }
 
     /**
-     * @param consumer notice commit or it will rollback automatic at block end
+     * Plz remember close connection(s).
+     *
+     * @return pooled jdbc connection
+     * @throws SQLException
      */
-    public void connection(Consumer<Connection> consumer) {
-        val tx = getServer().beginTransaction();
-        try {
-            consumer.accept(tx.getConnection());
-        } finally {
-            tx.end();
-        }
+    public Connection getConnection() throws SQLException {
+        validInitialized();
+        return pool.getConnection();
     }
 
     public void define(Class<?> in) {
