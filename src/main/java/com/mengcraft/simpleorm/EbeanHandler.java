@@ -13,6 +13,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.val;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
@@ -25,6 +26,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 import static com.mengcraft.simpleorm.lib.Reflector.invoke;
 
@@ -74,6 +76,26 @@ public class EbeanHandler {
     public Connection getConnection() throws SQLException {
         validInitialized();
         return pool.getConnection();
+    }
+
+    /**
+     * @deprecated Bukkit-1.12 deprecated {@code Plugin.getDatabase()}.
+     */
+    public void reflect() {
+        validInitialized();
+        if (!managed) {
+            plugin.getLogger().warning("自定义连接不能注入到端");
+            return;
+        }
+        try {
+            PluginDescriptionFile desc = plugin.getDescription();
+            if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
+                desc.getClass().getMethod("setDatabaseEnabled", boolean.class).invoke(desc, true);
+            }
+            Reflect.replace(plugin, server);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式|" + e.toString());
+        }
     }
 
     public void define(Class<?> clz) {

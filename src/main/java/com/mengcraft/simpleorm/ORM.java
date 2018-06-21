@@ -5,6 +5,7 @@ import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class ORM extends JavaPlugin {
 
     private static EbeanHandler globalHandler;
+    private static RedisWrapper globalRedisWrapper;
 
     @Override
     public void onLoad() {
@@ -58,9 +60,17 @@ public class ORM extends JavaPlugin {
     public void onEnable() {
         getCommand("simpleorm").setExecutor(this);
         new MetricsLite(this);
-        if (globalHandler != null) {
+        if (!nil(globalHandler)) {
             globalHandler.initialize();
             globalHandler.install(true);
+        }
+        if (nil(globalRedisWrapper)) {
+            GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+            int max = getConfig().getInt("redis.max_conn", -1);
+            if (max > 0) {
+                config.setMaxTotal(max);
+            }
+            globalRedisWrapper = new RedisWrapper(getConfig().getString("redis.url"), config);
         }
     }
 
@@ -111,6 +121,14 @@ public class ORM extends JavaPlugin {
      */
     public static EbeanServer globalDataServer() {
         return globalHandler.getServer();// fast fail
+    }
+
+    public static RedisWrapper globalRedisWrapper() {
+        return globalRedisWrapper;
+    }
+
+    protected static boolean nil(Object any) {
+        return any == null;
     }
 
     enum SubExecutor {

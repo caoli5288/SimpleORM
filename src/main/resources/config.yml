@@ -2,3 +2,7 @@ dataSource:
   url: jdbc:mysql://localhost/db
   user: root
   password: wowsuchpassword
+
+redis:
+  url: 'redis://localhost:6379'
+  max_conn: 20
