@@ -30,23 +30,20 @@ public class RedisWrapper extends BinaryJedisPubSub {
         consumer.accept(jedis);
     }
 
-    @SneakyThrows
     public void publish(String channel, String message) {
-        publish(channel, message.getBytes("utf8"));
+        publish(channel, message.getBytes(Charset.forName("utf8")));
     }
 
-    @SneakyThrows
     public void publish(String channel, byte[] message) {
-        open(client -> client.publish(channel.getBytes("utf8"), message));
+        open(client -> client.publish(channel.getBytes(Charset.forName("utf8")), message));
     }
 
-    @SneakyThrows
     public void subscribe(String channel, Consumer<byte[]> consumer) {
         if (nil(messageFilter)) {
             messageFilter = new MessageFilter();
-            runAsync(() -> open(client -> client.subscribe(messageFilter, channel.getBytes("utf8"))));
+            runAsync(() -> open(client -> client.subscribe(messageFilter, channel.getBytes(Charset.forName("utf8")))));
         } else {
-            messageFilter.subscribe(channel.getBytes("utf8"));
+            messageFilter.subscribe(channel.getBytes(Charset.forName("utf8")));
         }
         messageFilter.processor.put(channel, consumer);
     }
