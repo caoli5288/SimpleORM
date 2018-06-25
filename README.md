@@ -95,3 +95,20 @@ dataSource:
 ## Attention
 - A @ManyToOne field is lazy load!
 - A @ManyToOne field is not support on sqlite platform!
+
+## Redis wrapper
+```java
+RedisWrapper redisWrapper = ORM.globalRedisWrapper();
+redisWrapper.open(redis -> {
+    redis.set("my_key", "my_value");
+    // more codes here
+});
+
+redisWrapper.subscribe("my_channel", message -> {
+    Foo foo = Foo.decode(message);
+    // codes here
+})
+
+redisWrapper.publish("my_channel", "my_message");
+
+```
