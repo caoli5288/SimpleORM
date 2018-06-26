@@ -21,8 +21,16 @@ public class RedisWrapper extends BinaryJedisPubSub {
     private final JedisPool pool;
     private MessageFilter messageFilter;
 
-    public RedisWrapper(String url, GenericObjectPoolConfig config) {
+    private RedisWrapper(String url, GenericObjectPoolConfig config) {
         pool = new JedisPool(config, URI.create(url));
+    }
+
+    static RedisWrapper b(String url, int conn) {
+        GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+        if (conn >= 1) {
+            config.setMaxTotal(conn);
+        }
+        return new RedisWrapper(url, config);
     }
 
     public void open(Consumer<Jedis> consumer) {
