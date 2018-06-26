@@ -49,15 +49,24 @@ public class MongoWrapper {
 
         public <T> void save(T bean, Function<T, Object> idprovider) {
             Map<String, Object> serializer = ORM.serialize(bean);
-            if (!nil(idprovider)) {
-                serializer.put("_id", idprovider.apply(bean));
-            }
+            serializer.put("_id", idprovider.apply(bean));
             collection.save(new BasicDBObject(serializer));
         }
 
-        public <T> T findOne(BasicDBObject que, Class<T> clz) {
-            DBObject one = collection.findOne(que);
-            return ORM.deserialize((Map<String, Object>) one.toMap(), clz);
+        public <T> T findOne(BasicDBObject find, Class<T> clz) {
+            DBObject result = collection.findOne(find);
+            if (nil(result)) {
+                return null;
+            }
+            return ORM.deserialize((Map<String, Object>) result.toMap(), clz);
+        }
+
+        public <T> T findOne(Object idx, Class<T> clz) {
+            DBObject result = collection.findOne(idx);
+            if (nil(result)) {
+                return null;
+            }
+            return ORM.deserialize((Map<String, Object>) result.toMap(), clz);
         }
     }
 }
