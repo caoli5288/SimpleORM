@@ -1,14 +1,18 @@
 package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
+import com.google.gson.Gson;
+import com.mengcraft.simpleorm.lib.JsonHelper;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
+import com.mengcraft.simpleorm.lib.Reflector;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,11 +21,15 @@ import javax.persistence.Entity;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 public class ORM extends JavaPlugin {
 
     private static EbeanHandler globalHandler;
     private static RedisWrapper globalRedisWrapper;
+    private static MongoWrapper globalMongoWrapper;
+
+    private static volatile Gson lazyJson;
 
     @Override
     public void onLoad() {
@@ -63,10 +71,18 @@ public class ORM extends JavaPlugin {
             globalHandler.initialize();
             globalHandler.install(true);
         }
-        String redisUrl = getConfig().getString("redis.url", "");
-        if (!redisUrl.isEmpty() && nil(globalRedisWrapper)) {
-            int max = getConfig().getInt("redis.max_conn", -1);
-            globalRedisWrapper = RedisWrapper.b(redisUrl, max);
+        if (nil(globalRedisWrapper)) {
+            String redisUrl = getConfig().getString("redis.url", "");
+            if (!redisUrl.isEmpty()) {
+                int max = getConfig().getInt("redis.max_conn", -1);
+                globalRedisWrapper = RedisWrapper.b(redisUrl, max);
+            }
+        }
+        if (nil(globalMongoWrapper)) {
+            String url = getConfig().getString("mongo.url", "");
+            if (!url.isEmpty()) {
+                globalMongoWrapper = MongoWrapper.b(url);
+            }
         }
     }
 
@@ -120,15 +136,51 @@ public class ORM extends JavaPlugin {
     }
 
     public static RedisWrapper globalRedisWrapper() {
-        return globalRedisWrapper;
+        return Objects.requireNonNull(globalRedisWrapper);
+    }
+
+    public static MongoWrapper globalMongoWrapper() {
+        return Objects.requireNonNull(globalMongoWrapper);
     }
 
     public static EbeanHandler getDataHandler(JavaPlugin plugin) {
         return EbeanManager.DEFAULT.getHandler(plugin);
     }
 
-    protected static boolean nil(Object any) {
+    public static boolean nil(Object any) {
         return any == null;
+    }
+
+    public static Gson json() {
+        Gson json = lazyJson;
+        if (nil(json)) {
+            synchronized (ORM.class) {
+                if (nil(lazyJson)) {
+                    lazyJson = new Gson();
+                }
+                return lazyJson;
+            }
+        }
+        return json;
+    }
+
+    public static Map<String, Object> serialize(Object any) {
+        if (any instanceof ConfigurationSerializable) {
+            return ((ConfigurationSerializable) any).serialize();
+        }
+        return (Map<String, Object>) JsonHelper.primitive(json().toJsonTree(any));
+    }
+
+    public static <T> T deserialize(Map<String, Object> map, Class<T> clz) {
+        if (ConfigurationSerializable.class.isAssignableFrom(clz)) {
+            try {
+                return Reflector.object(clz, map);
+            } catch (Exception ignored) {
+                return Reflector.invoke(clz, "deserialize", map);
+            }
+        }
+        val json = json();
+        return json.fromJson(json.toJsonTree(map), clz);
     }
 
     enum SubExecutor {
@@ -165,6 +217,7 @@ public class ORM extends JavaPlugin {
         void exec(CommandSender who, Iterator<String> itr) {
             throw new AbstractMethodError("exec");
         }
+
     }
 
 }
