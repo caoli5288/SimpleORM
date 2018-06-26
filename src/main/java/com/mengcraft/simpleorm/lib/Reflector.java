@@ -79,7 +79,7 @@ public enum Reflector {
     @SneakyThrows
     public static <T> T invoke(Object any, String method, Object... input) {
         Class<?>[] p = classArray(input);
-        val i = getMethodRef(any.getClass(), method, p);
+        val i = getMethodRef(Class.class.isInstance(any) ? Class.class.cast(any) : any.getClass(), method, p);
         return (T) i.invoke(any, input);
     }
 
