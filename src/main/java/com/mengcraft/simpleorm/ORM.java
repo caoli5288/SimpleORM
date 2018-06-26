@@ -23,6 +23,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.mengcraft.simpleorm.lib.Tuple.tuple;
+
 public class ORM extends JavaPlugin {
 
     private static EbeanHandler globalHandler;
@@ -174,9 +176,9 @@ public class ORM extends JavaPlugin {
     public static <T> T deserialize(Map<String, Object> map, Class<T> clz) {
         if (ConfigurationSerializable.class.isAssignableFrom(clz)) {
             try {
-                return Reflector.object(clz, map);
+                return Reflector.object(clz, tuple(Map.class, map));
             } catch (Exception ignored) {
-                return Reflector.invoke(clz, "deserialize", map);
+                return Reflector.invoke(clz, "deserialize", tuple(Map.class, map));
             }
         }
         val json = json();

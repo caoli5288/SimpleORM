@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -84,6 +85,13 @@ public enum Reflector {
     }
 
     @SneakyThrows
+    public static <T> T invoke(Object any, String method, Tuple<Class, Object>... input) {
+        Tuple<List<Class>, List<Object>> tuple = Tuple.flip(Arrays.asList(input));
+        val i = getMethodRef(Class.class.isInstance(any) ? Class.class.cast(any) : any.getClass(), method, tuple.left().toArray(new Class[input.length]));
+        return (T) i.invoke(any, tuple.right().toArray());
+    }
+
+    @SneakyThrows
     public static <T> T getField(Object any, String field) {
         val i = getFieldRef(any.getClass(), field);
         return (T) i.get(any);
@@ -96,11 +104,20 @@ public enum Reflector {
     }
 
     @SneakyThrows
-    public static <T> T object(Class<?> type, Object... param) {
+    public static <T> T object(Class<T> type, Object... param) {
         val map = REFLECTOR.construct.computeIfAbsent(type, $ -> map());
         val classArray = classArray(param);
         val ref = map.computeIfAbsent(Arrays.toString(classArray), $ -> getRef(type, classArray));
         return (T) ref.newInstance(param);
+    }
+
+    @SneakyThrows
+    public static <T> T object(Class<T> type, Tuple<Class, Object>... input) {
+        val map = REFLECTOR.construct.computeIfAbsent(type, $ -> map());
+        Tuple<List<Class>, List<Object>> tuple = Tuple.flip(Arrays.asList(input));
+        Class[] classArray = tuple.left().toArray(new Class[input.length]);
+        val ref = map.computeIfAbsent(Arrays.toString(classArray), $ -> getRef(type, classArray));
+        return (T) ref.newInstance(tuple.right().toArray());
     }
 
     @SneakyThrows
