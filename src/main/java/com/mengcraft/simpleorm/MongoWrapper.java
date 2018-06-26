@@ -3,12 +3,16 @@ package com.mengcraft.simpleorm;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import lombok.SneakyThrows;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -53,20 +57,29 @@ public class MongoWrapper {
             collection.save(new BasicDBObject(serializer));
         }
 
-        public <T> T findOne(BasicDBObject find, Class<T> clz) {
+        public <T> List<T> findAll(Class<T> clz, DBObject ref) {
+            DBCursor cursor = collection.find(ref);
+            List<T> container = new ArrayList<>();
+            for (DBObject object : cursor) {
+                container.add(ORM.deserialize(clz, (Map<String, Object>) object.toMap()));
+            }
+            return container;
+        }
+
+        public <T> T find(Class<T> clz, DBObject find) {
             DBObject result = collection.findOne(find);
             if (nil(result)) {
                 return null;
             }
-            return ORM.deserialize((Map<String, Object>) result.toMap(), clz);
+            return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
         }
 
-        public <T> T findOne(Object idx, Class<T> clz) {
-            DBObject result = collection.findOne(idx);
+        public <T> T find(Class<T> clz, Object id) {
+            DBObject result = collection.findOne(id);
             if (nil(result)) {
                 return null;
             }
-            return ORM.deserialize((Map<String, Object>) result.toMap(), clz);
+            return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
         }
     }
 }

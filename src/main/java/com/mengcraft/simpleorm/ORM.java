@@ -173,7 +173,7 @@ public class ORM extends JavaPlugin {
         return (Map<String, Object>) JsonHelper.primitive(json().toJsonTree(any));
     }
 
-    public static <T> T deserialize(Map<String, Object> map, Class<T> clz) {
+    public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
         if (ConfigurationSerializable.class.isAssignableFrom(clz)) {
             try {
                 return Reflector.object(clz, tuple(Map.class, map));
