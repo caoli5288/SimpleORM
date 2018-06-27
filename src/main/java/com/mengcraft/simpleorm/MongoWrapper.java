@@ -9,7 +9,10 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.MongoTimeoutException;
 import lombok.SneakyThrows;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -70,7 +73,13 @@ public class MongoWrapper {
             for (DBObject object : cursor) {
                 container.add(ORM.deserialize(clz, (Map<String, Object>) object.toMap()));
             }
+            cursor.close();
             return container;
+        }
+
+        public <T> DBCursorWrapper<T> findLazy(Class<T> clz, DBObject ref) {
+            DBCursor cursor = collection.find(ref);
+            return new DBCursorWrapper<>(clz, cursor);
         }
 
         public <T> T find(Class<T> clz, DBObject find) {
@@ -87,6 +96,29 @@ public class MongoWrapper {
                 return null;
             }
             return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
+        }
+    }
+
+    public static class DBCursorWrapper<T> implements Iterator<T> {
+
+        private final Class<T> clz;
+        private final DBCursor origin;
+
+        DBCursorWrapper(Class<T> clz, DBCursor origin) {
+            this.clz = clz;
+            this.origin = origin;
+        }
+
+        public boolean hasNext() {
+            return origin.hasNext();
+        }
+
+        public T next() {
+            return ORM.deserialize(clz, (Map<String, Object>) origin.next().toMap());
+        }
+
+        protected void finalize() {// safe to memory leak
+            origin.close();
         }
     }
 }
