@@ -6,12 +6,14 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.BinaryJedisPubSub;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static com.mengcraft.simpleorm.ORM.nil;
 import static java.util.concurrent.CompletableFuture.runAsync;
@@ -36,6 +38,15 @@ public class RedisWrapper extends BinaryJedisPubSub {
     public void open(Consumer<Jedis> consumer) {
         @Cleanup Jedis jedis = pool.getResource();
         consumer.accept(jedis);
+    }
+
+    public <T> T call(Function<Jedis, T> function) {
+        @Cleanup Jedis jedis = pool.getResource();
+        return function.apply(jedis);
+    }
+
+    public String ping() throws JedisConnectionException {
+        return call(jd -> jd.ping());
     }
 
     public void publish(String channel, String message) {

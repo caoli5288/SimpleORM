@@ -1,18 +1,17 @@
 package com.mengcraft.simpleorm;
 
-import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoTimeoutException;
 import lombok.SneakyThrows;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -35,6 +34,10 @@ public class MongoWrapper {
         return new MongoDatabaseWrapper(client.getDB(database).getCollection(collection));
     }
 
+    public void ping() throws MongoTimeoutException {
+        open("_ping", "_ping").collection.findOne();
+    }
+
     public static class MongoDatabaseWrapper {
 
         private final DBCollection collection;
@@ -45,6 +48,10 @@ public class MongoWrapper {
 
         public void open(Consumer<DBCollection> consumer) {
             consumer.accept(collection);
+        }
+
+        public <T> T call(Function<DBCollection, T> function) {
+            return function.apply(collection);
         }
 
         public <T> void save(T bean) {
