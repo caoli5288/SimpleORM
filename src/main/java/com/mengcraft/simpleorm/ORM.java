@@ -158,7 +158,7 @@ public class ORM extends JavaPlugin {
         if (nil(json)) {
             synchronized (ORM.class) {
                 if (nil(lazyJson)) {
-                    lazyJson = new Gson();
+                    lazyJson = JsonHelper.createJsonInBuk();
                 }
                 return lazyJson;
             }
