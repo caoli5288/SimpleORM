@@ -7,10 +7,9 @@ import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoTimeoutException;
+import com.mongodb.gridfs.GridFS;
 import lombok.SneakyThrows;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -33,12 +32,16 @@ public class MongoWrapper {
         return new MongoWrapper(new MongoClientURI(url));
     }
 
-    public MongoDatabaseWrapper open(String database, String collection) {
-        return new MongoDatabaseWrapper(client.getDB(database).getCollection(collection));
+    public GridFS openFileSystem(String database, String bucket) {
+        return new GridFS(client.getDB(database), bucket == null || bucket.isEmpty() ? "fs" : bucket);
     }
 
     public void ping() throws MongoTimeoutException {
         open("_ping", "_ping").collection.findOne();
+    }
+
+    public MongoDatabaseWrapper open(String database, String collection) {
+        return new MongoDatabaseWrapper(client.getDB(database).getCollection(collection));
     }
 
     public static class MongoDatabaseWrapper {
