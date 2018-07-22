@@ -1,5 +1,7 @@
 package com.mengcraft.simpleorm;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -10,15 +12,14 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.mengcraft.simpleorm.ORM.nil;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
-public class RedisWrapper extends BinaryJedisPubSub {
+public class RedisWrapper {
 
     private final JedisPool pool;
     private MessageFilter messageFilter;
@@ -35,18 +36,13 @@ public class RedisWrapper extends BinaryJedisPubSub {
         return new RedisWrapper(url, config);
     }
 
-    public void open(Consumer<Jedis> consumer) {
-        @Cleanup Jedis jedis = pool.getResource();
-        consumer.accept(jedis);
+    public String ping() throws JedisConnectionException {
+        return call(jd -> jd.ping());
     }
 
     public <T> T call(Function<Jedis, T> function) {
         @Cleanup Jedis jedis = pool.getResource();
         return function.apply(jedis);
-    }
-
-    public String ping() throws JedisConnectionException {
-        return call(jd -> jd.ping());
     }
 
     public void publish(String channel, String message) {
@@ -57,17 +53,22 @@ public class RedisWrapper extends BinaryJedisPubSub {
         open(client -> client.publish(channel.getBytes(Charset.forName("utf8")), message));
     }
 
-    public void subscribe(String channel, Consumer<byte[]> consumer) {
+    public void open(Consumer<Jedis> consumer) {
+        @Cleanup Jedis jedis = pool.getResource();
+        consumer.accept(jedis);
+    }
+
+    public synchronized void subscribe(String channel, Consumer<byte[]> consumer) {
         if (nil(messageFilter)) {
             messageFilter = new MessageFilter();
             runAsync(() -> open(client -> client.subscribe(messageFilter, channel.getBytes(Charset.forName("utf8")))));
-        } else {
+        } else if (!messageFilter.handled.containsKey(channel)) {
             messageFilter.subscribe(channel.getBytes(Charset.forName("utf8")));
         }
-        messageFilter.processor.put(channel, consumer);
+        messageFilter.handled.put(channel, consumer);
     }
 
-    public void unsubscribeAll() {
+    public synchronized void unsubscribeAll() {
         if (nil(messageFilter)) {
             return;
         }
@@ -76,18 +77,43 @@ public class RedisWrapper extends BinaryJedisPubSub {
     }
 
     @SneakyThrows
-    public void unsubscribe(String channel) {
+    public synchronized void unsubscribe(String channel) {
         if (nil(messageFilter)) {
             return;
         }
 
-        Consumer<byte[]> consumer = messageFilter.processor.remove(channel);
-        if (nil(consumer)) {
+        if (!messageFilter.handled.containsKey(channel)) {
             return;
         }
 
         messageFilter.unsubscribe(channel.getBytes("utf8"));
-        if (!messageFilter.processor.isEmpty()) {
+        if (!messageFilter.handled.isEmpty()) {
+            return;
+        }
+
+        messageFilter = null;
+    }
+
+    public synchronized void unsubscribe(String channel, Consumer<byte[]> consumer) {
+        if (nil(messageFilter)) {
+            return;
+        }
+
+        if (!messageFilter.handled.containsKey(channel)) {
+            return;
+        }
+
+        boolean removal = messageFilter.handled.remove(channel, consumer);
+        if (!removal) {
+            return;
+        }
+
+        if (messageFilter.handled.containsKey(channel)) {
+            return;
+        }
+
+        messageFilter.unsubscribe(channel.getBytes(Charset.forName("utf8")));
+        if (!messageFilter.handled.isEmpty()) {
             return;
         }
 
@@ -96,15 +122,16 @@ public class RedisWrapper extends BinaryJedisPubSub {
 
     private static class MessageFilter extends BinaryJedisPubSub {
 
-        private final Map<String, Consumer<byte[]>> processor = new HashMap<>();
+        private final Multimap<String, Consumer<byte[]>> handled = HashMultimap.create();
 
         @SneakyThrows
         public void onMessage(byte[] channel, byte[] message) {
-            Consumer<byte[]> consumer = processor.get(new String(channel, "utf8"));
-            if (nil(consumer)) {
+            Collection<Consumer<byte[]>> allconsumer = handled.get(new String(channel, "utf8"));
+            if (allconsumer.isEmpty()) {
                 return;
             }
-            consumer.accept(message);
+
+            for (Consumer<byte[]> consumer : allconsumer) consumer.accept(message);
         }
     }
 }
