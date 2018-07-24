@@ -4,6 +4,7 @@ dataSource:
   password: wowsuchpassword
 
 redis:
+  master_name: null
   url: redis://localhost:6379
   max_conn: 20
 

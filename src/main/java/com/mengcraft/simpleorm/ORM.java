@@ -46,6 +46,8 @@ public class ORM extends JavaPlugin {
                 EbeanManager.DEFAULT,
                 this,
                 ServicePriority.Normal);
+
+        setEnabled(true);
     }
 
     public static void loadLibrary(JavaPlugin plugin) {
@@ -77,7 +79,7 @@ public class ORM extends JavaPlugin {
             String redisUrl = getConfig().getString("redis.url", "");
             if (!redisUrl.isEmpty()) {
                 int max = getConfig().getInt("redis.max_conn", -1);
-                globalRedisWrapper = RedisWrapper.b(redisUrl, max);
+                globalRedisWrapper = RedisWrapper.b(getConfig().getString("redis.master_name"), redisUrl, max);
             }
         }
         if (nil(globalMongoWrapper)) {
@@ -86,6 +88,7 @@ public class ORM extends JavaPlugin {
                 globalMongoWrapper = MongoWrapper.b(url);
             }
         }
+        getLogger().info("Welcome!");
     }
 
     public boolean onCommand(CommandSender who, Command command, String label, String[] input) {

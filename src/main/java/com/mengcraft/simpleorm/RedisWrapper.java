@@ -8,11 +8,15 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.BinaryJedisPubSub;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.util.Pool;
 
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -21,19 +25,32 @@ import static java.util.concurrent.CompletableFuture.runAsync;
 
 public class RedisWrapper {
 
-    private final JedisPool pool;
+    private final Pool<Jedis> pool;
     private MessageFilter messageFilter;
 
     RedisWrapper(String url, GenericObjectPoolConfig config) {
         pool = new JedisPool(config, URI.create(url));
     }
 
-    public static RedisWrapper b(String url, int conn) {
+    RedisWrapper(Pool<Jedis> pool) {
+        this.pool = pool;
+    }
+
+    public static RedisWrapper b(String sentinel, String url, int conn) {
         GenericObjectPoolConfig config = new GenericObjectPoolConfig();
         if (conn >= 1) {
             config.setMaxTotal(conn);
         }
-        return new RedisWrapper(url, config);
+        if (sentinel == null || sentinel.isEmpty()) {
+            return new RedisWrapper(url, config);
+        }
+        String[] split = url.split(";");
+        Set<String> b = new HashSet<>(split.length);
+        for (String line : split) {
+            URI uri = URI.create(line);
+            b.add(uri.getHost() + ':' + uri.getPort());
+        }
+        return new RedisWrapper(new JedisSentinelPool(sentinel, b, config));
     }
 
     public String ping() throws JedisConnectionException {
