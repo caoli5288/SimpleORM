@@ -69,7 +69,6 @@ public class ORM extends JavaPlugin {
     @Override
     @SneakyThrows
     public void onEnable() {
-        getCommand("simpleorm").setExecutor(this);
         new MetricsLite(this);
         if (!nil(globalHandler)) {
             globalHandler.initialize();
@@ -89,23 +88,6 @@ public class ORM extends JavaPlugin {
             }
         }
         getLogger().info("Welcome!");
-    }
-
-    public boolean onCommand(CommandSender who, Command command, String label, String[] input) {
-        if (input.length < 1) {
-            for (val executor : SubExecutor.values()) {
-                who.sendMessage('/' + label + ' ' + executor.usage);
-            }
-        } else {
-            try {
-                Iterator<String> itr = Arrays.asList(input).iterator();
-                SubExecutor.valueOf(itr.next().toUpperCase()).exec(who, itr);
-                return true;
-            } catch (Exception exc) {
-                who.sendMessage(ChatColor.RED + exc.toString());
-            }
-        }
-        return false;
     }
 
     /**
@@ -186,43 +168,6 @@ public class ORM extends JavaPlugin {
         }
         val json = json();
         return json.fromJson(json.toJsonTree(map), clz);
-    }
-
-    enum SubExecutor {
-
-        LIST("list") {
-            void exec(CommandSender who, Iterator<String> itr) {
-                Map<String, EbeanHandler> all = EbeanManager.DEFAULT.map;
-                if (!all.isEmpty()) {
-                    all.forEach((key, handler) -> who.sendMessage("[" + key + "] -> " + handler));
-                }
-            }
-        },
-
-        REMOVE("remove <plugin_name>") {
-            void exec(CommandSender who, Iterator<String> itr) {
-                EbeanHandler remove = EbeanManager.DEFAULT.map.remove(itr.next());
-                who.sendMessage(remove == null ? "handle not found" : "okay");
-            }
-        },
-
-        REMOVE_ALL("remove_all") {
-            void exec(CommandSender who, Iterator<String> itr) {
-                EbeanManager.DEFAULT.map.clear();
-                who.sendMessage("okay");
-            }
-        };
-
-        private final String usage;
-
-        SubExecutor(String usage) {
-            this.usage = usage;
-        }
-
-        void exec(CommandSender who, Iterator<String> itr) {
-            throw new AbstractMethodError("exec");
-        }
-
     }
 
 }
