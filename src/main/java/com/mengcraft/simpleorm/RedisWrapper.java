@@ -13,7 +13,7 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.util.Pool;
 
 import java.net.URI;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,7 +21,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.mengcraft.simpleorm.ORM.nil;
-import static java.util.concurrent.CompletableFuture.runAsync;
 
 public class RedisWrapper {
 
@@ -63,11 +62,11 @@ public class RedisWrapper {
     }
 
     public void publish(String channel, String message) {
-        publish(channel, message.getBytes(Charset.forName("utf8")));
+        publish(channel, message.getBytes(StandardCharsets.UTF_8));
     }
 
     public void publish(String channel, byte[] message) {
-        open(client -> client.publish(channel.getBytes(Charset.forName("utf8")), message));
+        open(client -> client.publish(channel.getBytes(StandardCharsets.UTF_8), message));
     }
 
     public void open(Consumer<Jedis> consumer) {
@@ -78,9 +77,9 @@ public class RedisWrapper {
     public synchronized void subscribe(String channel, Consumer<byte[]> consumer) {
         if (nil(messageFilter)) {
             messageFilter = new MessageFilter();
-            runAsync(() -> open(client -> client.subscribe(messageFilter, channel.getBytes(Charset.forName("utf8")))));
+            new Thread(() -> open(client -> client.subscribe(messageFilter, channel.getBytes(StandardCharsets.UTF_8)))).start();
         } else if (!messageFilter.handled.containsKey(channel)) {
-            messageFilter.subscribe(channel.getBytes(Charset.forName("utf8")));
+            messageFilter.subscribe(channel.getBytes(StandardCharsets.UTF_8));
         }
         messageFilter.handled.put(channel, consumer);
     }
@@ -103,7 +102,7 @@ public class RedisWrapper {
             return;
         }
 
-        messageFilter.unsubscribe(channel.getBytes("utf8"));
+        messageFilter.unsubscribe(channel.getBytes(StandardCharsets.UTF_8));
         if (!messageFilter.handled.isEmpty()) {
             return;
         }
@@ -129,7 +128,7 @@ public class RedisWrapper {
             return;
         }
 
-        messageFilter.unsubscribe(channel.getBytes(Charset.forName("utf8")));
+        messageFilter.unsubscribe(channel.getBytes(StandardCharsets.UTF_8));
         if (!messageFilter.handled.isEmpty()) {
             return;
         }
