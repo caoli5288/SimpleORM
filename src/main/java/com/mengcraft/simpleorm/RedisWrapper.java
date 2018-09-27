@@ -3,6 +3,7 @@ package com.mengcraft.simpleorm;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import lombok.Cleanup;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.BinaryJedisPubSub;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -142,12 +144,23 @@ public class RedisWrapper {
 
         @SneakyThrows
         public void onMessage(byte[] channel, byte[] message) {
-            Collection<Consumer<byte[]>> allconsumer = handled.get(new String(channel, "utf8"));
-            if (allconsumer.isEmpty()) {
+            Collection<Consumer<byte[]>> allConsumer = handled.get(new String(channel, StandardCharsets.UTF_8));
+            if (allConsumer.isEmpty()) {
                 return;
             }
 
-            for (Consumer<byte[]> consumer : allconsumer) consumer.accept(message);
+            for (Consumer<byte[]> consumer : allConsumer) consumer.accept(message);
+        }
+
+        @Override
+        @SneakyThrows
+        public void subscribe(@NonNull byte[]... channels) {
+            try {
+                super.subscribe(channels);
+            } catch (NullPointerException e) {
+                TimeUnit.MILLISECONDS.sleep(0);
+                subscribe(channels);
+            }
         }
     }
 }
