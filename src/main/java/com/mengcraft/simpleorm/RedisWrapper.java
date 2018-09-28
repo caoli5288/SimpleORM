@@ -6,6 +6,8 @@ import lombok.Cleanup;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import redis.clients.jedis.BinaryJedisPubSub;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -17,6 +19,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -136,6 +139,29 @@ public class RedisWrapper {
         }
 
         messageFilter = null;
+    }
+
+    public void set(String key, Object obj) {
+        set(key, obj, 0);
+    }
+
+    public void set(String key, Object obj, int expire) {
+        open(jedis -> {
+            jedis.set(key, JSONObject.toJSONString(ORM.serialize(obj)));
+            if (expire >= 1) {
+                jedis.expire(key, expire);
+            }
+        });
+    }
+
+    public <T> T get(String key, Class<T> clazz) {
+        return call(jedis -> {
+            String str = jedis.get(key);
+            if (str == null) {
+                return null;
+            }
+            return ORM.deserialize(clazz, (Map<String, Object>) JSONValue.parse(str));
+        });
     }
 
     private static class MessageFilter extends BinaryJedisPubSub {

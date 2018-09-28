@@ -9,17 +9,12 @@ import com.mengcraft.simpleorm.lib.Reflector;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,8 +25,7 @@ public class ORM extends JavaPlugin {
     private static EbeanHandler globalHandler;
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
-
-    private static volatile Gson lazyJson;
+    private static ThreadLocal<Gson> jsonLazy = ThreadLocal.withInitial(JsonHelper::createJsonInBuk);
 
     @Override
     public void onLoad() {
@@ -139,16 +133,7 @@ public class ORM extends JavaPlugin {
     }
 
     public static Gson json() {
-        Gson json = lazyJson;
-        if (nil(json)) {
-            synchronized (ORM.class) {
-                if (nil(lazyJson)) {
-                    lazyJson = JsonHelper.createJsonInBuk();
-                }
-                return lazyJson;
-            }
-        }
-        return json;
+        return jsonLazy.get();
     }
 
     public static Map<String, Object> serialize(Object any) {
