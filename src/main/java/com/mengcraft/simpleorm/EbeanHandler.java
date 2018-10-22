@@ -8,6 +8,7 @@ import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
+import com.mengcraft.simpleorm.driver.IDatabaseDriver;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -175,7 +176,7 @@ public class EbeanHandler {
         pool.setPoolName(name);
 
         pool.setConnectionTimeout(10_000);
-        pool.setJdbcUrl(url);
+        pool.setJdbcUrl(IDatabaseDriver.validAndLoad(url));
         pool.setUsername(user);
         pool.setPassword(password);
 
