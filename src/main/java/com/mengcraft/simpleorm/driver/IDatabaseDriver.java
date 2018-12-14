@@ -46,6 +46,7 @@ public abstract class IDatabaseDriver {
         private static final Map<String, IDatabaseDriver> __ = new HashMap<>();
 
         static {
+            register(new H2Driver());
             register(new PostgreDriver());
         }
 
