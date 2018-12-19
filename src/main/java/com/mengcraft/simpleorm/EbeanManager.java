@@ -10,9 +10,9 @@ public class EbeanManager {
 
     public static final EbeanManager DEFAULT = new EbeanManager();
 
-    static String url = "jdbc:mysql://localhost/db";
-    static String user = "user";
-    static String password = "passwd";
+    private static String url = "jdbc:mysql://localhost/db";
+    private static String user = "user";
+    private static String password = "passwd";
 
     final Map<String, EbeanHandler> map = new HashMap<>();
 
@@ -82,6 +82,18 @@ public class EbeanManager {
 
     static void unHandle(EbeanHandler db) {
         DEFAULT.map.remove(db.getPlugin().getName(), db);
+    }
+
+    public static void setUrl(String url) {
+        EbeanManager.url = url;
+    }
+
+    public static void setUser(String user) {
+        EbeanManager.user = user;
+    }
+
+    public static void setPassword(String password) {
+        EbeanManager.password = password;
     }
 
     @Deprecated
