@@ -8,6 +8,8 @@ import com.avaje.ebean.config.dbplatform.SQLitePlatform;
 import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import com.mengcraft.simpleorm.driver.IDatabaseDriver;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.EqualsAndHashCode;
@@ -40,6 +42,7 @@ public class EbeanHandler {
     private final UUID id = UUID.randomUUID();
 
     private HikariDataSource pool;
+    private Map<String, String> properties;
     private String heartbeat;
     private String name;
     private String driver;
@@ -207,6 +210,12 @@ public class EbeanHandler {
 
         }
 
+        if (properties != null) {
+            for (val kv : properties.entrySet()) {
+                pool.addDataSourceProperty(kv.getKey(), kv.getValue());
+            }
+        }
+
         conf.setName(name);
         conf.setDataSource(pool);
 
@@ -229,6 +238,14 @@ public class EbeanHandler {
         } finally {
             Thread.currentThread().setContextClassLoader(mainctx);
         }
+    }
+
+    public void setJdbcProperty(String key, String value) {
+        Preconditions.checkState(isNotInitialized(), "Set property after initialized");
+        if (properties == null) {
+            properties = Maps.newHashMap();
+        }
+        properties.put(key, value);
     }
 
     public void save(Object in) {
