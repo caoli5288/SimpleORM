@@ -21,7 +21,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.util.Pool;
+import redis.clients.jedis.params.SetParams;
+import redis.clients.jedis.util.Pool;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -151,10 +152,12 @@ public class RedisWrapper {
 
     public void set(String key, Object obj, int expire) {
         open(jedis -> {
-            jedis.set(key, JSONObject.toJSONString(ORM.serialize(obj)));
+            String data = JSONObject.toJSONString(ORM.serialize(obj));
             if (expire >= 1) {
-                jedis.expire(key, expire);
+                jedis.set(key, data, SetParams.setParams().ex(expire));
+                return;
             }
+            jedis.set(key, data);
         });
     }
 
