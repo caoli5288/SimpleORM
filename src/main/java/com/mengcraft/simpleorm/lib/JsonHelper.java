@@ -91,7 +91,7 @@ public class JsonHelper {
             if (!jsonElement.isJsonObject()) {
                 return null;
             }
-            val tuple = tuple(Map.class, primitive(jsonElement));
+            Tuple<Class, Object> tuple = tuple(Map.class, primitive(jsonElement));
             try {
                 return Reflector.object((Class<ConfigurationSerializable>) clz, tuple);
             } catch (Exception ignored) {
