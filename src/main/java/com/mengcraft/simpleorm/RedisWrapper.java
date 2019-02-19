@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -76,6 +77,23 @@ public class RedisWrapper {
         return function.apply(jedis);
     }
 
+    public <T> T call(int database, Function<Jedis, T> function) {
+        Preconditions.checkArgument(database > -1);
+        if (database == 0) {
+            return call(function);
+        }
+        T obj;
+        Jedis jedis = pool.getResource();
+        try {
+            jedis.select(database);
+            obj = function.apply(jedis);
+        } finally {
+            jedis.select(0);
+            jedis.close();
+        }
+        return obj;
+    }
+
     public void publish(String channel, String message) {
         publish(channel, message.getBytes(StandardCharsets.UTF_8));
     }
@@ -87,6 +105,22 @@ public class RedisWrapper {
     public void open(Consumer<Jedis> consumer) {
         @Cleanup Jedis jedis = pool.getResource();
         consumer.accept(jedis);
+    }
+
+    public void open(int database, Consumer<Jedis> consumer) {
+        Preconditions.checkArgument(database > -1);
+        if (database == 0) {
+            open(consumer);
+        } else {
+            Jedis jedis = pool.getResource();
+            try {
+                jedis.select(database);
+                consumer.accept(jedis);
+            } finally {
+                jedis.select(0);
+                jedis.close();
+            }
+        }
     }
 
     public synchronized void subscribe(String channel, Consumer<byte[]> consumer) {
@@ -152,13 +186,17 @@ public class RedisWrapper {
 
     public void set(String key, Object obj, int expire) {
         open(jedis -> {
-            String data = JSONObject.toJSONString(ORM.serialize(obj));
+            String data = (obj instanceof String) ? obj.toString() : JSONObject.toJSONString(ORM.serialize(obj));
             if (expire >= 1) {
                 jedis.set(key, data, SetParams.setParams().ex(expire));
                 return;
             }
             jedis.set(key, data);
         });
+    }
+
+    public String getString(String key) {
+        return call(jedis -> jedis.get(key));
     }
 
     public <T> T get(String key, Class<T> clazz) {
