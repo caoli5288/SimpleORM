@@ -100,6 +100,10 @@ public class MongoWrapper {
             }
             return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
         }
+
+        public void remove(Object id) {
+            collection.remove(new BasicDBObject("_id", id));
+        }
     }
 
     public static class DBCursorWrapper<T> implements Iterator<T> {

@@ -2,7 +2,6 @@ package com.mengcraft.simpleorm.lib;
 
 import lombok.SneakyThrows;
 import lombok.val;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +16,11 @@ import static com.mengcraft.simpleorm.lib.Reflector.invoke;
  * Created on 15-12-13.
  */
 public class LibraryLoader {
+
+    @Deprecated
+    public static void load(JavaPlugin plugin, Library library, boolean global) {
+        load(plugin, library);
+    }
 
     @SneakyThrows
     public static void load(JavaPlugin plugin, Library library) {
@@ -39,7 +43,7 @@ public class LibraryLoader {
     }
 
     @SneakyThrows
-    static void init(JavaPlugin plugin, Library library) {
+    public static void init(JavaPlugin plugin, Library library) {
         plugin.getLogger().info("Loading library " + library);
 
         val run = CompletableFuture.runAsync(() -> {

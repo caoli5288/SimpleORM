@@ -209,6 +209,10 @@ public class RedisWrapper {
         });
     }
 
+    public void del(String key) {
+        open(jedis -> jedis.del(key));
+    }
+
     public MessageTopic getMessageTopic(String topic) {
         return topics.computeIfAbsent(topic, s -> new MessageTopic(s));
     }
