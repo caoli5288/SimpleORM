@@ -19,7 +19,7 @@ import static com.mengcraft.simpleorm.lib.Reflector.invoke;
 public class LibraryLoader {
 
     @SneakyThrows
-    public static void load(JavaPlugin plugin, Library library, boolean global) {
+    public static void load(JavaPlugin plugin, Library library) {
         if (library.present()) {
             plugin.getLogger().info("Library " + library + " present");
         } else {
@@ -28,11 +28,11 @@ public class LibraryLoader {
             }
 
             for (Library sub : library.getSublist()) {
-                load(plugin, sub, global);
+                load(plugin, sub);
             }
 
             val lib = library.getFile();
-            invoke(global ? Bukkit.class.getClassLoader() : getField(plugin, "classLoader"), "addURL", lib.toURI().toURL());
+            invoke(getField(plugin, "classLoader"), "addURL", lib.toURI().toURL());
 
             plugin.getLogger().info("Load library " + lib + " done");
         }
