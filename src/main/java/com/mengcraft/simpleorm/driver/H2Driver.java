@@ -14,6 +14,6 @@ public class H2Driver extends IDatabaseDriver {
 
     @Override
     protected String description() {
-        return "com.h2database:h2:1.4.197";
+        return "com.h2database:h2:1.4.198";
     }
 }

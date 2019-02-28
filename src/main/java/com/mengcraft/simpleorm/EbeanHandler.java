@@ -91,17 +91,16 @@ public class EbeanHandler {
             plugin.getLogger().warning("自定义连接不能注入到端");
             return;
         }
-        try {
+        if (Reflect.isLegacy()) {
             PluginDescriptionFile desc = plugin.getDescription();
-            if (!((boolean) desc.getClass().getMethod("isDatabaseEnabled").invoke(desc))) {
-                desc.getClass().getMethod("setDatabaseEnabled", boolean.class).invoke(desc, true);
-            }
-            Reflect.replace(plugin, server);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式|" + e.toString());
+            Reflect.setDatabaseEnabled(desc, true);
+            Reflect.setEbeanServer(plugin, server);
+        } else {
+            plugin.getLogger().log(Level.WARNING, "注入失败了，1.12服务端不再支持注入方式");
         }
     }
 
+    @Deprecated
     public void define(Class<?> clz) {
         add(clz);
     }
@@ -128,7 +127,7 @@ public class EbeanHandler {
     public void uninstall() {
         validInitialized();
         try {
-            SpiEbeanServer spi = SpiEbeanServer.class.cast(server);
+            SpiEbeanServer spi = (SpiEbeanServer) server;
             DdlGenerator gen = spi.getDdlGenerator();
             gen.runScript(true, gen.generateDropDdl());
         } catch (Exception e) {
@@ -151,7 +150,7 @@ public class EbeanHandler {
         } catch (Exception e) {
             plugin.getLogger().info(e.getMessage());
             plugin.getLogger().info("Start create tables, wait...");
-            DdlGenerator gen = SpiEbeanServer.class.cast(server).getDdlGenerator();
+            DdlGenerator gen = ((SpiEbeanServer) server).getDdlGenerator();
             gen.runScript(ignore, gen.generateCreateDdl());
             plugin.getLogger().info("Create tables done!");
         }

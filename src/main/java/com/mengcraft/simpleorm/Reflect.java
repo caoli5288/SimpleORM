@@ -1,23 +1,55 @@
 package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
+import lombok.SneakyThrows;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import static com.mengcraft.simpleorm.lib.Reflector.getField;
 
 public final class Reflect {
 
-    public static void replace(Plugin proxy, EbeanServer in) throws Exception {
-        Field server = JavaPlugin.class.getDeclaredField("ebean");
-        server.setAccessible(true);
-        server.set(proxy, in);
+    private static final Method SET_DATABASE_ENABLED = INIT_SET_DATABASE_ENABLED();
+    private static final Field EBEAN = INIT_EBEAN();
+    private static boolean legacy;
+
+    private static Method INIT_SET_DATABASE_ENABLED() {
+        try {
+            return PluginDescriptionFile.class.getMethod("setDatabaseEnabled", boolean.class);
+        } catch (NoSuchMethodException ignored) {
+        }
+        return null;
     }
 
-    public static ClassLoader getLoader(Plugin plugin) throws Exception {
+    private static Field INIT_EBEAN() {
+        try {
+            Field ebean = JavaPlugin.class.getDeclaredField("ebean");
+            ebean.setAccessible(true);
+            legacy = true;
+        } catch (NoSuchFieldException ignored) {
+        }
+        return null;
+    }
+
+    @SneakyThrows
+    public static void setDatabaseEnabled(PluginDescriptionFile descriptionFile, boolean update) {
+        SET_DATABASE_ENABLED.invoke(descriptionFile, update);
+    }
+
+    @SneakyThrows
+    public static void setEbeanServer(Plugin proxy, EbeanServer in) {
+        EBEAN.set(proxy, in);
+    }
+
+    public static ClassLoader getLoader(Plugin plugin) {
         return getField(plugin, "classLoader");
     }
 
+    public static boolean isLegacy() {
+        return legacy;
+    }
 }
