@@ -51,7 +51,7 @@ public class EbeanHandler {
     private String password;
 
     private int coreSize = 1;
-    private int maxSize = (Runtime.getRuntime().availableProcessors() << 1) + 1;
+    private int maxSize = Math.min(20, Runtime.getRuntime().availableProcessors() + 1);
 
     private IsolationLevel isolationLevel;
     private EbeanServer server;
