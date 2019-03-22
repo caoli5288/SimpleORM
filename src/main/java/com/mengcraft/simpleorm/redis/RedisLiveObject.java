@@ -9,13 +9,18 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 @Getter
 public class RedisLiveObject extends AbstractMap<String, String> {// TODO Use lua script to handle some atomic and complex ops.
 
     private final RedisLiveObjectBucket bucket;
     private final String id;
-    private final String objectId = bucket.getId() + ":" + id;
+    private final String objectId;
+
+    public RedisLiveObject(RedisLiveObjectBucket bucket, String id) {
+        this.bucket = bucket;
+        this.id = id;
+        this.objectId = bucket.getId() + ":" + id;
+    }
 
     /**
      * @return always {@code null} for io
