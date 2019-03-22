@@ -7,8 +7,8 @@ import com.google.common.collect.Multimap;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import com.mengcraft.simpleorm.lib.Tuple;
-import com.mengcraft.simpleorm.lib.VarIntDataStream;
+import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
+import com.mengcraft.simpleorm.redis.RedisMessageTopic;
 import lombok.Cleanup;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import static com.mengcraft.simpleorm.ORM.nil;
 
 public class RedisWrapper {
 
-    private final Map<String, MessageTopic> topics = Maps.newHashMap();
+    private final Map<String, RedisMessageTopic> topics = Maps.newHashMap();
     private final Pool<Jedis> pool;
     private MessageFilter messageFilter;
 
@@ -213,8 +213,20 @@ public class RedisWrapper {
         open(jedis -> jedis.del(key));
     }
 
-    public MessageTopic getMessageTopic(String topic) {
-        return topics.computeIfAbsent(topic, s -> new MessageTopic(s));
+    public RedisMessageTopic getMessageTopic(String topic) {
+        return topics.computeIfAbsent(topic, s -> new RedisMessageTopic(this, s));
+    }
+
+    public void removeMessageTopic(String name) {
+        RedisMessageTopic topic = topics.remove(name);
+        if (topic == null) {
+            return;
+        }
+        topic.removeAll();
+    }
+
+    public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
+        return new RedisLiveObjectBucket(this, bucket);
     }
 
     public interface MessageTopicListener<T> {
@@ -245,84 +257,6 @@ public class RedisWrapper {
                 TimeUnit.MILLISECONDS.sleep(0);
                 subscribe(channels);
             }
-        }
-    }
-
-    @RequiredArgsConstructor
-    public class MessageTopic {
-
-        private final Multimap<String, Tuple<String, MessageTopicListener>> multimap = HashMultimap.create();// <class_name, (plugin_name, listener)>
-        private final String name;
-        private Consumer<byte[]> consumer;
-
-        public <T> void addListener(Plugin plugin, Class<T> clazz, MessageTopicListener<T> listener) {
-            if (multimap.isEmpty()) {// 1st subscribe channel
-                if (consumer == null) {
-                    consumer = this::receive;
-                }
-                subscribe("simple_topic:" + name, consumer);
-            }
-            multimap.put(clazz.getName(), Tuple.tuple(plugin.getName(), listener));
-        }
-
-        public boolean removeListener(Plugin plugin, Class clazz) {
-            if (multimap.containsKey(clazz.getName()) && multimap.get(clazz.getName()).removeIf(p -> p.left().equals(plugin.getName()))) {
-                cleanup();
-                return true;
-            }
-            return false;
-        }
-
-        private void cleanup() {
-            if (multimap.isEmpty()) {
-                unsubscribe("simple_topic:" + name, consumer);
-            }
-        }
-
-        public boolean removeListener(Plugin plugin) {
-            if (!multimap.isEmpty() && multimap.values().removeIf(p -> p.left().equals(plugin.getName()))) {
-                cleanup();
-                return true;
-            }
-            return false;
-        }
-
-        public boolean removeListener(Class clazz) {
-            if (!multimap.isEmpty() && !multimap.removeAll(clazz.getName()).isEmpty()) {
-                cleanup();
-                return true;
-            }
-            return false;
-        }
-
-        @SneakyThrows
-        protected void receive(byte[] data) {
-            ByteArrayDataInput buf = ByteStreams.newDataInput(data);
-            String clazzName = VarIntDataStream.readString(buf);
-            if (multimap.containsKey(clazzName)) {
-                Class<?> clazz = Class.forName(clazzName);
-                Object obj = ORM.deserialize(clazz, ((Map<String, Object>) JSONValue.parse(VarIntDataStream.readString(buf))));
-                for (Tuple<String, MessageTopicListener> l : multimap.get(clazzName)) {
-                    l.right().handle(name, obj);
-                }
-            }
-        }
-
-        public void post(Object obj) {
-            ByteArrayDataOutput buf = ByteStreams.newDataOutput();
-            VarIntDataStream.writeString(buf, obj.getClass().getName());
-            VarIntDataStream.writeString(buf, JSONObject.toJSONString(ORM.serialize(obj)));
-            publish(name, buf.toByteArray());
-        }
-
-        public void close() {
-            if (topics.remove(name) == null) {
-                return;
-            }
-            if (multimap.isEmpty()) {
-                return;
-            }
-            unsubscribe("simple_topic:" + name, consumer);
         }
     }
 
