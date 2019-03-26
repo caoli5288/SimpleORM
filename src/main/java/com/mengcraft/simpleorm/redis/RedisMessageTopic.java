@@ -23,10 +23,10 @@ public class RedisMessageTopic {
 
     private final RedisWrapper redisWrapper;
     private final String name;
-    private final Multimap<String, Tuple<String, RedisWrapper.MessageTopicListener>> multimap = HashMultimap.create();// <class_name, (plugin_name, listener)>
+    private final Multimap<String, Tuple<String, MessageTopicListener>> multimap = HashMultimap.create();// <class_name, (plugin_name, listener)>
     private Consumer<byte[]> consumer;
 
-    public <T> void addListener(Plugin plugin, Class<T> clazz, RedisWrapper.MessageTopicListener<T> listener) {
+    public <T> void addListener(Plugin plugin, Class<T> clazz, MessageTopicListener<T> listener) {
         if (multimap.isEmpty()) {// 1st subscribe channel
             if (consumer == null) {
                 consumer = this::receive;
@@ -85,7 +85,7 @@ public class RedisMessageTopic {
         if (multimap.containsKey(clazzName)) {
             Class<?> clazz = Class.forName(clazzName);
             Object obj = ORM.deserialize(clazz, ((Map<String, Object>) JSONValue.parse(VarIntDataStream.readString(buf))));
-            for (Tuple<String, RedisWrapper.MessageTopicListener> l : multimap.get(clazzName)) {
+            for (Tuple<String, MessageTopicListener> l : multimap.get(clazzName)) {
                 l.right().handle(name, obj);
             }
         }
@@ -98,6 +98,9 @@ public class RedisMessageTopic {
         redisWrapper.publish(name, buf.toByteArray());
     }
 
+    public interface MessageTopicListener<T> {
 
+        void handle(String topic, T obj);
+    }
 
 }

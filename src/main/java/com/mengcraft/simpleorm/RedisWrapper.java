@@ -4,17 +4,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import com.google.common.io.ByteArrayDataInput;
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
 import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
 import com.mengcraft.simpleorm.redis.RedisMessageTopic;
 import lombok.Cleanup;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.bukkit.plugin.Plugin;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import redis.clients.jedis.BinaryJedisPubSub;
@@ -227,11 +222,6 @@ public class RedisWrapper {
 
     public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
         return new RedisLiveObjectBucket(this, bucket);
-    }
-
-    public interface MessageTopicListener<T> {
-
-        void handle(String topic, T obj);
     }
 
     private static class MessageFilter extends BinaryJedisPubSub {
