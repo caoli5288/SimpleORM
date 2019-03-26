@@ -1,15 +1,17 @@
 package com.mengcraft.simpleorm.redis;
 
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-@Getter
+@EqualsAndHashCode(exclude = "bucket")
+@Data
+@ToString(exclude = "bucket")
 public class RedisLiveObject extends AbstractMap<String, String> {// TODO Use lua script to handle some atomic and complex ops.
 
     private final RedisLiveObjectBucket bucket;
@@ -99,6 +101,14 @@ public class RedisLiveObject extends AbstractMap<String, String> {// TODO Use lu
     @Override
     public void clear() {
         bucket.getRedisWrapper().open(jedis -> jedis.del(objectId));
+    }
+
+    public void incrementsValue(String key, int value) {
+        bucket.getRedisWrapper().open(jedis -> jedis.hincrBy(objectId, key, value));
+    }
+
+    public void incrementsValue(String key, double value) {
+        bucket.getRedisWrapper().open(jedis -> jedis.hincrByFloat(objectId, key, value));
     }
 
 }
