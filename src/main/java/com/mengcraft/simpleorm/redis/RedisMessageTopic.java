@@ -1,20 +1,18 @@
 package com.mengcraft.simpleorm.redis;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
-import com.mengcraft.simpleorm.lib.Tuple;
 import com.mengcraft.simpleorm.lib.VarIntDataStream;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.bukkit.plugin.Plugin;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -23,55 +21,40 @@ public class RedisMessageTopic {
 
     private final RedisWrapper redisWrapper;
     private final String name;
-    private final Multimap<String, Tuple<String, MessageTopicListener>> multimap = HashMultimap.create();// <class_name, (plugin_name, listener)>
+    private final Map<String, PackagedListener<?>> map = new HashMap<>();
     private Consumer<byte[]> consumer;
 
-    public <T> void addListener(Plugin plugin, Class<T> clazz, MessageTopicListener<T> listener) {
-        if (multimap.isEmpty()) {// 1st subscribe channel
+    public <T> void addListener(Class<T> clazz, MessageTopicListener<T> listener) {
+        if (map.isEmpty()) {// 1st subscribe channel
             if (consumer == null) {
                 consumer = this::receive;
             }
             redisWrapper.subscribe("simple_topic:" + name, consumer);
         }
-        multimap.put(clazz.getName(), Tuple.tuple(plugin.getName(), listener));
-    }
-
-    public boolean removeListener(Plugin plugin, Class clazz) {
-        if (multimap.containsKey(clazz.getName()) && multimap.get(clazz.getName()).removeIf(p -> p.left().equals(plugin.getName()))) {
-            cleanup();
-            return true;
-        }
-        return false;
+        map.put(clazz.getName(), new PackagedListener<>(clazz, listener));
     }
 
     private void cleanup() {
-        if (multimap.isEmpty()) {
+        if (map.isEmpty()) {
             redisWrapper.unsubscribe("simple_topic:" + name, consumer);
         }
     }
 
     public void removeAll() {
-        if (multimap.isEmpty()) {
+        if (map.isEmpty()) {
             return;
         }
-        multimap.clear();
+        map.clear();
         cleanup();
     }
 
     public boolean isEmpty() {
-        return multimap.isEmpty();
-    }
-
-    public boolean removeListener(Plugin plugin) {
-        if (!multimap.isEmpty() && multimap.values().removeIf(p -> p.left().equals(plugin.getName()))) {
-            cleanup();
-            return true;
-        }
-        return false;
+        return map.isEmpty();
     }
 
     public boolean removeListener(Class clazz) {
-        if (!multimap.isEmpty() && !multimap.removeAll(clazz.getName()).isEmpty()) {
+        if (map.containsKey(clazz.getName())) {
+            map.remove(clazz.getName());
             cleanup();
             return true;
         }
@@ -82,12 +65,10 @@ public class RedisMessageTopic {
     protected void receive(byte[] data) {
         ByteArrayDataInput buf = ByteStreams.newDataInput(data);
         String clazzName = VarIntDataStream.readString(buf);
-        if (multimap.containsKey(clazzName)) {
-            Class<?> clazz = Class.forName(clazzName);
-            Object obj = ORM.deserialize(clazz, ((Map<String, Object>) JSONValue.parse(VarIntDataStream.readString(buf))));
-            for (Tuple<String, MessageTopicListener> l : multimap.get(clazzName)) {
-                l.right().handle(name, obj);
-            }
+        if (map.containsKey(clazzName)) {
+            PackagedListener<?> packaged = map.get(clazzName);
+            Object obj = ORM.deserialize(packaged.clazz, ((Map<String, Object>) JSONValue.parse(VarIntDataStream.readString(buf))));
+            packaged.handle(name, obj);
         }
     }
 
@@ -95,12 +76,23 @@ public class RedisMessageTopic {
         ByteArrayDataOutput buf = ByteStreams.newDataOutput();
         VarIntDataStream.writeString(buf, obj.getClass().getName());
         VarIntDataStream.writeString(buf, JSONObject.toJSONString(ORM.serialize(obj)));
-        redisWrapper.publish(name, buf.toByteArray());
+        redisWrapper.publish("simple_topic:" + name, buf.toByteArray());
     }
 
     public interface MessageTopicListener<T> {
 
         void handle(String topic, T obj);
+    }
+
+    @Data
+    private class PackagedListener<T> {
+
+        private final Class<T> clazz;
+        private final MessageTopicListener<T> listener;
+
+        protected void handle(String topic, Object obj) {
+            listener.handle(topic, (T) obj);
+        }
     }
 
 }

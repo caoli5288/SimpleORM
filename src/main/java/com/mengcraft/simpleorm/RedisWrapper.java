@@ -2,7 +2,6 @@ package com.mengcraft.simpleorm;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
 import com.mengcraft.simpleorm.redis.RedisMessageTopic;
@@ -34,7 +33,6 @@ import static com.mengcraft.simpleorm.ORM.nil;
 
 public class RedisWrapper {
 
-    private final Map<String, RedisMessageTopic> topics = Maps.newHashMap();
     private final Pool<Jedis> pool;
     private MessageFilter messageFilter;
 
@@ -209,15 +207,7 @@ public class RedisWrapper {
     }
 
     public RedisMessageTopic getMessageTopic(String topic) {
-        return topics.computeIfAbsent(topic, s -> new RedisMessageTopic(this, s));
-    }
-
-    public void removeMessageTopic(String name) {
-        RedisMessageTopic topic = topics.remove(name);
-        if (topic == null) {
-            return;
-        }
-        topic.removeAll();
+        return new RedisMessageTopic(this, topic);
     }
 
     public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
