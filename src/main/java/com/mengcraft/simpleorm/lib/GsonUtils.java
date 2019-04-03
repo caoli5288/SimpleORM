@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm.lib;
 
+import com.google.common.collect.Maps;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -13,59 +14,51 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import lombok.val;
+import lombok.SneakyThrows;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static com.mengcraft.simpleorm.ORM.nil;
 import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
-public class JsonHelper {
+public class GsonUtils {
 
-    private static final FunctionRegistry<JsonElement, Object> $ = new FunctionRegistry<>();
+    private static final Field PRIMITIVE_VALUE = REFLECT_PRIMITIVE_VALUE();
+    private static TypeFunctionRegistry<Object> registry = new TypeFunctionRegistry<>();
 
     static {
-        $.register(JsonNull.class, jsonElement -> null);
-        $.register(JsonPrimitive.class, jsonElement -> Reflector.getField(jsonElement, "value"));
-        $.register(JsonObject.class, jsonElement -> {
-            JsonObject object = jsonElement.getAsJsonObject();
-            Map<String, Object> container = new HashMap<>(object.size());
-            dump(object, container);
+        registry.register(JsonNull.class, e -> null);
+        registry.register(JsonPrimitive.class, e -> {
+            try {
+                return PRIMITIVE_VALUE.get(e);
+            } catch (IllegalAccessException ignored) {
+            }
+            return null;
+        });
+        registry.register(JsonArray.class, e -> StreamSupport.stream(e.spliterator(), false).map(registry::handle).collect(Collectors.toList()));
+        registry.register(JsonObject.class, e -> {
+            Map<String, Object> container = Maps.newHashMap();
+            for (Map.Entry<String, JsonElement> node : e.entrySet()) {
+                container.put(node.getKey(), registry.handle(node.getValue()));
+            }
             return container;
         });
-        $.register(JsonArray.class, jsonElement -> {
-            JsonArray array = jsonElement.getAsJsonArray();
-            List<Object> container = new ArrayList<>(array.size());
-            dump(array, container);
-            return container;
-        });
     }
 
-    public static void dump(JsonObject object, Map<String, Object> container) {
-        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
-            Object primitive = primitive(entry.getValue());
-            if (!nil(primitive)) {
-                container.put(entry.getKey(), primitive);
-            }
-        }
+    @SneakyThrows
+    private static Field REFLECT_PRIMITIVE_VALUE() {
+        Field value = JsonPrimitive.class.getDeclaredField("value");
+        value.setAccessible(true);
+        return value;
     }
 
-    public static Object primitive(JsonElement value) {
-        return $.handle(value.getClass(), value);
-    }
-
-    public static void dump(JsonArray jsonArray, List<Object> container) {
-        for (JsonElement jsonElement : jsonArray) {
-            Object primitive = primitive(jsonElement);
-            if (!nil(primitive)) {
-                container.add(primitive);
-            }
-        }
+    public static Object dump(JsonElement value) {
+        return registry.handle(value);
     }
 
     public static Gson createJsonInBuk() {
@@ -91,7 +84,7 @@ public class JsonHelper {
             if (!jsonElement.isJsonObject()) {
                 return null;
             }
-            Tuple<Class, Object> tuple = tuple(Map.class, primitive(jsonElement));
+            Tuple<Class, Object> tuple = tuple(Map.class, dump(jsonElement));
             try {
                 return Reflector.object((Class<ConfigurationSerializable>) clz, tuple);
             } catch (Exception ignored) {

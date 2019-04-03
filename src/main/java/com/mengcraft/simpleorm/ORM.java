@@ -2,7 +2,7 @@ package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
 import com.google.gson.Gson;
-import com.mengcraft.simpleorm.lib.JsonHelper;
+import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.lib.Reflector;
@@ -25,7 +25,7 @@ public class ORM extends JavaPlugin {
     private static EbeanHandler globalHandler;
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
-    private static ThreadLocal<Gson> jsonLazy = ThreadLocal.withInitial(JsonHelper::createJsonInBuk);
+    private static ThreadLocal<Gson> jsonLazy = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
 
     @Override
     public void onLoad() {
@@ -140,7 +140,7 @@ public class ORM extends JavaPlugin {
         if (any instanceof ConfigurationSerializable) {
             return ((ConfigurationSerializable) any).serialize();
         }
-        return (Map<String, Object>) JsonHelper.primitive(json().toJsonTree(any));
+        return (Map<String, Object>) GsonUtils.dump(json().toJsonTree(any));
     }
 
     public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
