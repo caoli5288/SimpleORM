@@ -17,7 +17,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.params.SetParams;
-import redis.clients.jedis.util.Pool;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -33,15 +32,15 @@ import static com.mengcraft.simpleorm.ORM.nil;
 
 public class RedisWrapper {
 
-    private final Pool<Jedis> pool;
+    private final JedisResources resources;
     private MessageFilter messageFilter;
 
-    RedisWrapper(String url, GenericObjectPoolConfig config) {
-        pool = new JedisPool(config, URI.create(url));
+    private RedisWrapper(JedisPool pool) {
+        resources = pool::getResource;
     }
 
-    RedisWrapper(Pool<Jedis> pool) {
-        this.pool = pool;
+    private RedisWrapper(JedisSentinelPool sentinels) {
+        resources = sentinels::getResource;
     }
 
     public static RedisWrapper b(String sentinel, String url, int conn) {
@@ -50,7 +49,7 @@ public class RedisWrapper {
             config.setMaxTotal(conn);
         }
         if (sentinel == null || sentinel.isEmpty()) {
-            return new RedisWrapper(url, config);
+            return new RedisWrapper(new JedisPool(config, URI.create(url)));
         }
         String[] split = url.split(";");
         Set<String> b = new HashSet<>(split.length);
@@ -66,7 +65,7 @@ public class RedisWrapper {
     }
 
     public <T> T call(Function<Jedis, T> function) {
-        @Cleanup Jedis jedis = pool.getResource();
+        @Cleanup Jedis jedis = resources.getResource();
         return function.apply(jedis);
     }
 
@@ -76,7 +75,7 @@ public class RedisWrapper {
             return call(function);
         }
         T obj;
-        Jedis jedis = pool.getResource();
+        Jedis jedis = resources.getResource();
         try {
             jedis.select(database);
             obj = function.apply(jedis);
@@ -96,7 +95,7 @@ public class RedisWrapper {
     }
 
     public void open(Consumer<Jedis> consumer) {
-        @Cleanup Jedis jedis = pool.getResource();
+        @Cleanup Jedis jedis = resources.getResource();
         consumer.accept(jedis);
     }
 
@@ -105,7 +104,7 @@ public class RedisWrapper {
         if (database == 0) {
             open(consumer);
         } else {
-            Jedis jedis = pool.getResource();
+            Jedis jedis = resources.getResource();
             try {
                 jedis.select(database);
                 consumer.accept(jedis);
@@ -212,6 +211,11 @@ public class RedisWrapper {
 
     public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
         return new RedisLiveObjectBucket(this, bucket);
+    }
+
+    private interface JedisResources {
+
+        Jedis getResource();
     }
 
     private static class MessageFilter extends BinaryJedisPubSub {
