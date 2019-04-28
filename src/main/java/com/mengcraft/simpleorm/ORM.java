@@ -26,9 +26,11 @@ public class ORM extends JavaPlugin {
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
     private static ThreadLocal<Gson> jsonLazy = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
+    private static ORM plugin;
 
     @Override
     public void onLoad() {
+        plugin = this;
         loadLibrary(this);
         saveDefaultConfig();
 
@@ -82,6 +84,10 @@ public class ORM extends JavaPlugin {
             }
         }
         getLogger().info("Welcome!");
+    }
+
+    public static boolean isFullyEnabled() {
+        return plugin.isEnabled();
     }
 
     /**
