@@ -21,6 +21,7 @@ import redis.clients.jedis.params.SetParams;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -51,13 +52,17 @@ public class RedisWrapper {
         if (sentinel == null || sentinel.isEmpty()) {
             return new RedisWrapper(new JedisPool(config, URI.create(url)));
         }
-        String[] split = url.split(";");
-        Set<String> b = new HashSet<>(split.length);
-        for (String line : split) {
-            URI uri = URI.create(line);
-            b.add(uri.getHost() + ':' + uri.getPort());
+        Set<String> sentinels = new HashSet<>();
+        if (url.matches("redis://(.+[,].+)")) {
+            Collections.addAll(sentinels, url.substring(8).split(","));
+        } else {
+            String[] split = url.split(";");
+            for (String line : split) {
+                URI uri = URI.create(line);
+                sentinels.add(uri.getHost() + ':' + uri.getPort());
+            }
         }
-        return new RedisWrapper(new JedisSentinelPool(sentinel, b, config));
+        return new RedisWrapper(new JedisSentinelPool(sentinel, sentinels, config));
     }
 
     public String ping() throws JedisConnectionException {

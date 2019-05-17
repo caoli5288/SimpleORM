@@ -97,18 +97,35 @@ dataSource:
 - A @ManyToOne field is not support on sqlite platform!
 
 ## Redis wrapper
+
+### Configure
+
+If you want to enable sentinel mode, make sure `master_name` is a non-empty string, or make sure it is `null`. An example is shown below.
+
+```yaml
+redis:
+  master_name: i_am_master
+  url: redis://host1:26379,host2:26379,host3:26379
+  max_conn: 20
+```
+
+### Codes
+
 ```java
-RedisWrapper redisWrapper = ORM.globalRedisWrapper();
-redisWrapper.open(redis -> {
-    redis.set("my_key", "my_value");
-    // more codes here
-});
-
-redisWrapper.subscribe("my_channel", message -> {
-    Foo foo = Foo.decode(message);
-    // codes here
-})
-
-redisWrapper.publish("my_channel", "my_message");
-
+class Foo {
+    void bar() {
+        RedisWrapper redisWrapper = ORM.globalRedisWrapper();
+        redisWrapper.open(redis -> {
+            redis.set("my_key", "my_value");
+            // more codes here
+        });
+        
+        redisWrapper.subscribe("my_channel", message -> {
+            Foo foo = Foo.decode(message);
+            // codes here
+        });
+        
+        redisWrapper.publish("my_channel", "my_message");
+    }
+}
 ```
