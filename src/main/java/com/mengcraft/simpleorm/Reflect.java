@@ -15,7 +15,6 @@ public final class Reflect {
 
     private static final Method SET_DATABASE_ENABLED = INIT_SET_DATABASE_ENABLED();
     private static final Field EBEAN = INIT_EBEAN();
-    private static boolean legacy;
 
     private static Method INIT_SET_DATABASE_ENABLED() {
         try {
@@ -29,7 +28,7 @@ public final class Reflect {
         try {
             Field ebean = JavaPlugin.class.getDeclaredField("ebean");
             ebean.setAccessible(true);
-            legacy = true;
+            return ebean;
         } catch (NoSuchFieldException ignored) {
         }
         return null;
@@ -37,12 +36,16 @@ public final class Reflect {
 
     @SneakyThrows
     public static void setDatabaseEnabled(PluginDescriptionFile descriptionFile, boolean update) {
-        SET_DATABASE_ENABLED.invoke(descriptionFile, update);
+        if (SET_DATABASE_ENABLED != null) {
+            SET_DATABASE_ENABLED.invoke(descriptionFile, update);
+        }
     }
 
     @SneakyThrows
     public static void setEbeanServer(Plugin proxy, EbeanServer in) {
-        EBEAN.set(proxy, in);
+        if (EBEAN != null) {
+            EBEAN.set(proxy, in);
+        }
     }
 
     public static ClassLoader getLoader(Plugin plugin) {
@@ -50,6 +53,6 @@ public final class Reflect {
     }
 
     public static boolean isLegacy() {
-        return legacy;
+        return EBEAN != null;
     }
 }
