@@ -10,11 +10,14 @@ import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
+import org.bukkit.entity.Player;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -161,4 +164,12 @@ public class ORM extends JavaPlugin {
         return json.fromJson(json.toJsonTree(map), clz);
     }
 
+    public static Map<String, Object> getMetadata(Player player) {
+        if (player.hasMetadata("__simple_metadata")) {
+            return (Map<String, Object>) player.getMetadata("__simple_metadata").get(0).value();
+        }
+        Map<String, Object> metadata = new HashMap<>();
+        player.setMetadata("__simple_metadata", new FixedMetadataValue(plugin, metadata));
+        return metadata;
+    }
 }
