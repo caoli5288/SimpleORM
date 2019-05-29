@@ -17,7 +17,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
-import java.util.HashMap;
+import java.util.function.Supplier;
 import java.util.Map;
 import java.util.Objects;
 
@@ -164,12 +164,16 @@ public class ORM extends JavaPlugin {
         return json.fromJson(json.toJsonTree(map), clz);
     }
 
-    public static Map<String, Object> getMetadata(Player player) {
-        if (player.hasMetadata("__simple_metadata")) {
-            return (Map<String, Object>) player.getMetadata("__simple_metadata").get(0).value();
+    public static <T> T attr(Player player, String key, Supplier<T> defaultValue) {
+        if (player.hasMetadata(key)) {
+            return (T) player.getMetadata(key).get(0).value();
         }
-        Map<String, Object> metadata = new HashMap<>();
-        player.setMetadata("__simple_metadata", new FixedMetadataValue(plugin, metadata));
-        return metadata;
+        if (defaultValue == null) {
+            return null;
+        } else {
+            T value = Objects.requireNonNull(defaultValue.get());
+            player.setMetadata(key, new FixedMetadataValue(plugin, value));
+            return value;
+        }
     }
 }
