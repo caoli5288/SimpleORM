@@ -25,10 +25,11 @@ import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class ORM extends JavaPlugin {
 
+    private static final GenericTrigger GENERIC_TRIGGER = new GenericTrigger();
+    private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
     private static EbeanHandler globalHandler;
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
-    private static ThreadLocal<Gson> jsonLazy = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
     private static ORM plugin;
 
     @Override
@@ -137,12 +138,16 @@ public class ORM extends JavaPlugin {
         return EbeanManager.DEFAULT.getHandler(plugin);
     }
 
+    public static GenericTrigger getGenericTrigger() {
+        return GENERIC_TRIGGER;
+    }
+
     public static boolean nil(Object any) {
         return any == null;
     }
 
     public static Gson json() {
-        return jsonLazy.get();
+        return JSON_LAZY.get();
     }
 
     public static Map<String, Object> serialize(Object any) {
