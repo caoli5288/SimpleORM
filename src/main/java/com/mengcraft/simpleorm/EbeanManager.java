@@ -42,48 +42,37 @@ public class EbeanManager {
     }
 
     private EbeanHandler build(JavaPlugin plugin) {
-        val out = new EbeanHandler(plugin, true);
+        EbeanHandler handler = new EbeanHandler(plugin, true);
+        if (plugin.getConfig().getBoolean("dataSource.disabled", false)) {
+            handler.setDataSource(ORM.getSharedSource());
+            return handler;
+        }
 
         String url = plugin.getConfig().getString("dataSource.url");
-
         String user = plugin.getConfig().getString("dataSource.user");
         if (user == null) {
             user = plugin.getConfig().getString("dataSource.userName");
         }
-
         String password = plugin.getConfig().getString("dataSource.password");
 
-        String driver = plugin.getConfig().getString("dataSource.driver");
-
-        boolean b = false;
-
         if (url == null) {
-            plugin.getConfig().set("dataSource.url", url = EbeanManager.url);
-            b = true;
-        }
-        out.setUrl(url);
-
-        if (user == null) {
-            plugin.getConfig().set("dataSource.user", user = EbeanManager.user);
-            b = true;
-        }
-        out.setUser(user);
-
-        if (password == null) {
-            plugin.getConfig().set("dataSource.password", password = EbeanManager.password);
-            b = true;
-        }
-        out.setPassword(password);
-
-        if (b) {
+            plugin.getConfig().set("dataSource.disabled", false);
+            plugin.getConfig().set("dataSource.url", url = EbeanManager.getUrl());
+            plugin.getConfig().set("dataSource.user", user = EbeanManager.getUser());
+            plugin.getConfig().set("dataSource.password", password = EbeanManager.getPassword());
             plugin.saveConfig();
+        } else {
+            String driver = plugin.getConfig().getString("dataSource.driver");
+            if (driver != null) {
+                handler.setDriver(driver);
+            }
         }
 
-        if (!(driver == null)) {
-            out.setDriver(driver);
-        }
+        handler.setUrl(url);
+        handler.setUser(user);
+        handler.setPassword(password);
 
-        return out;
+        return handler;
     }
 
     static void unHandle(EbeanHandler db) {
@@ -100,6 +89,18 @@ public class EbeanManager {
 
     public static void setPassword(String password) {
         EbeanManager.password = password;
+    }
+
+    public static String getUrl() {
+        return url;
+    }
+
+    public static String getUser() {
+        return user;
+    }
+
+    public static String getPassword() {
+        return password;
     }
 
     @Deprecated

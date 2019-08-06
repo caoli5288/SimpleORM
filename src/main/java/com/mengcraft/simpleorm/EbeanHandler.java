@@ -41,7 +41,7 @@ public class EbeanHandler {
     private final boolean managed;
     private final UUID id = UUID.randomUUID();
 
-    private HikariDataSource pool;
+    private HikariDataSource dataSource;
     private Map<String, String> properties;
     private String heartbeat;
     private String name;
@@ -50,8 +50,8 @@ public class EbeanHandler {
     private String user;
     private String password;
 
-    private int coreSize = 1;
-    private int maxSize = Math.min(20, Runtime.getRuntime().availableProcessors() + 1);
+    private int coreSize;
+    private int maxSize = ORM.getMaximumSize();
 
     private IsolationLevel isolationLevel;
     private EbeanServer server;
@@ -79,7 +79,7 @@ public class EbeanHandler {
      */
     public Connection getConnection() throws SQLException {
         validInitialized();
-        return pool.getConnection();
+        return dataSource.getConnection();
     }
 
     /**
@@ -160,6 +160,33 @@ public class EbeanHandler {
         install(false);
     }
 
+    protected HikariDataSource createSource() {
+        HikariDataSource source = new HikariDataSource();
+        source.setPoolName(name);
+        source.setConnectionTimeout(10_000);
+        source.setJdbcUrl(IDatabaseDriver.validAndLoad(url));
+        source.setUsername(user);
+        source.setPassword(password);
+        source.setAutoCommit(false);
+        source.setMinimumIdle(Math.max(1, coreSize));
+        source.setMaximumPoolSize(maxSize);
+        if (driver != null && !driver.isEmpty()) {
+            source.setDriverClassName(driver);
+        }
+        if (heartbeat != null && !heartbeat.isEmpty()) {
+            source.setConnectionTestQuery(heartbeat);
+        }
+        if (isolationLevel != null) {
+            source.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
+        }
+        if (properties != null) {
+            for (val kv : properties.entrySet()) {
+                source.addDataSourceProperty(kv.getKey(), kv.getValue());
+            }
+        }
+        return source;
+    }
+
     public void initialize() throws DatabaseException {
         if (!(server == null)) {
             throw new DatabaseException("Already initialized!");
@@ -167,56 +194,20 @@ public class EbeanHandler {
         if (mapping.size() < 1) {
             throw new DatabaseException("Not define entity class!");
         }
-        if (!(pool == null)) {
-            throw new DatabaseException("Already shutdown!");
+
+        PolicyInjector.inject();// Hacked in forge server
+
+        if (dataSource == null) {
+            dataSource = createSource();
         }
-        // Hacked in newest modded server
-        PolicyInjector.inject();
 
-        pool = new HikariDataSource();
-
-        pool.setPoolName(name);
-
-        pool.setConnectionTimeout(10_000);
-        pool.setJdbcUrl(IDatabaseDriver.validAndLoad(url));
-        pool.setUsername(user);
-        pool.setPassword(password);
-
-        pool.setAutoCommit(false);
-        pool.setMinimumIdle(coreSize);
-        pool.setMaximumPoolSize(maxSize);
-
-        val conf = new ServerConfig();
-
-        if (url.startsWith("jdbc:sqlite:")) {
-            // Fix ebean-2.7(at bukkit-1.7.10) compatible
-            pool.setConnectionTestQuery("select 1");
-            pool.setDriverClassName("org.sqlite.JDBC");
-            //
-            pool.setTransactionIsolation("TRANSACTION_SERIALIZABLE");
+        ServerConfig conf = new ServerConfig();
+        conf.setName(name);
+        conf.setDataSource(dataSource);
+        if (dataSource.getJdbcUrl().startsWith("jdbc:sqlite:")) {
             conf.setDatabasePlatform(new SQLitePlatform());
             conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
-        } else {
-            if (!(driver == null)) {
-                pool.setDriverClassName(driver);
-            }
-            if (!(heartbeat == null)) {
-                pool.setConnectionTestQuery(heartbeat);
-            }
-            if (!(isolationLevel == null)) {
-                pool.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
-            }
-
         }
-
-        if (properties != null) {
-            for (val kv : properties.entrySet()) {
-                pool.addDataSourceProperty(kv.getKey(), kv.getValue());
-            }
-        }
-
-        conf.setName(name);
-        conf.setDataSource(pool);
 
         for (Class<?> type : mapping) {
             conf.addClass(type);
@@ -363,13 +354,19 @@ public class EbeanHandler {
             val i = clz.getDeclaredConstructor(DefaultServer.class);
             i.setAccessible(true);
             ((Runnable) i.newInstance(server)).run();
-            pool.close();
+            if (!dataSource.getPoolName().equals("simple_shared")) {// Never shutdown shared
+                dataSource.close();
+            }
             if (managed) {
                 EbeanManager.unHandle(this);
             }
         } catch (Exception e) {
             throw new DatabaseException(e);
         }
+    }
+
+    public void setDataSource(HikariDataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public void setIsolationLevel(IsolationLevel isolationLevel) {

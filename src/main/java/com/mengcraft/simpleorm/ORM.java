@@ -1,35 +1,34 @@
 package com.mengcraft.simpleorm;
 
-import com.avaje.ebean.EbeanServer;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.lib.Reflector;
+import com.zaxxer.hikari.HikariDataSource;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import javax.persistence.Entity;
-import java.util.function.Supplier;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class ORM extends JavaPlugin {
 
+    private static final int MAXIMUM_SIZE = Math.min(20, Runtime.getRuntime().availableProcessors() + 1);
     private static final GenericTrigger GENERIC_TRIGGER = new GenericTrigger();
     private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
-    private static EbeanHandler globalHandler;
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
+    private static HikariDataSource sharedSource;
     private static ORM plugin;
 
     @Override
@@ -70,10 +69,6 @@ public class ORM extends JavaPlugin {
     @SneakyThrows
     public void onEnable() {
         new MetricsLite(this);
-        if (!nil(globalHandler)) {
-            globalHandler.initialize();
-            globalHandler.install(true);
-        }
         if (nil(globalRedisWrapper)) {
             String redisUrl = getConfig().getString("redis.url", "");
             if (!redisUrl.isEmpty()) {
@@ -90,40 +85,16 @@ public class ORM extends JavaPlugin {
         getLogger().info("Welcome!");
     }
 
+    public static boolean nil(Object any) {
+        return any == null;
+    }
+
+    public static int getMaximumSize() {
+        return MAXIMUM_SIZE;
+    }
+
     public static boolean isFullyEnabled() {
         return plugin.isEnabled();
-    }
-
-    /**
-     * Plz call this method in {@link Plugin#onLoad()}.
-     *
-     * @param input the entity bean class
-     */
-    public static synchronized void global(Class<?> input) {
-        ORM plugin = JavaPlugin.getPlugin(ORM.class);
-        if (plugin.isEnabled()) {
-            throw new IllegalStateException("isEnabled");
-        }
-
-        Entity annotation = input.getAnnotation(Entity.class);
-        if (annotation == null) {
-            throw new IllegalStateException(input + " is not @Entity");
-        }
-
-        if (globalHandler == null) {
-            globalHandler = EbeanManager.DEFAULT.getHandler(plugin);
-        }
-
-        globalHandler.define(input);
-    }
-
-    /**
-     * Plz call this method in or after {@link Plugin#onEnable()}.
-     *
-     * @return the global server
-     */
-    public static EbeanServer globalDataServer() {
-        return globalHandler.getServer();// fast fail
     }
 
     public static RedisWrapper globalRedisWrapper() {
@@ -142,12 +113,18 @@ public class ORM extends JavaPlugin {
         return GENERIC_TRIGGER;
     }
 
-    public static boolean nil(Object any) {
-        return any == null;
-    }
-
-    public static Gson json() {
-        return JSON_LAZY.get();
+    public synchronized static HikariDataSource getSharedSource() {
+        if (sharedSource == null) {
+            sharedSource = new HikariDataSource();
+            sharedSource.setPoolName("simple_shared");
+            sharedSource.setJdbcUrl(plugin.getConfig().getString("dataSource.url"));
+            sharedSource.setUsername(plugin.getConfig().getString("dataSource.user"));
+            sharedSource.setPassword(plugin.getConfig().getString("dataSource.password"));
+            sharedSource.setAutoCommit(false);
+            sharedSource.setMinimumIdle(1);
+            sharedSource.setMaximumPoolSize(getMaximumSize());
+        }
+        return sharedSource;
     }
 
     public static Map<String, Object> serialize(Object any) {
@@ -155,6 +132,10 @@ public class ORM extends JavaPlugin {
             return ((ConfigurationSerializable) any).serialize();
         }
         return (Map<String, Object>) GsonUtils.dump(json().toJsonTree(any));
+    }
+
+    public static Gson json() {
+        return JSON_LAZY.get();
     }
 
     public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
