@@ -22,13 +22,17 @@ public class EbeanManager {
     }
 
     public EbeanHandler getHandler(JavaPlugin plugin) {
+        return getHandler(plugin, false);
+    }
+
+    public EbeanHandler getHandler(JavaPlugin plugin, boolean shared) {
         if (!ORM.isFullyEnabled()) {
             plugin.getLogger().warning("Try register db handler while ORM not fully enabled(Not depend on or register at onLoad?).");
             Bukkit.getConsoleSender().sendMessage(ChatColor.RED + plugin.getName() + " try register db handler while ORM not fully enabled. This may cause unknown issues.");
         }
         EbeanHandler out = map.get(plugin.getName());
         if (out == null) {
-            map.put(plugin.getName(), out = build(plugin));
+            map.put(plugin.getName(), out = build(plugin, shared));
         }
         return out;
     }
@@ -41,9 +45,9 @@ public class EbeanManager {
         return map.get(name);
     }
 
-    private EbeanHandler build(JavaPlugin plugin) {
+    private EbeanHandler build(JavaPlugin plugin, boolean shared) {
         EbeanHandler handler = new EbeanHandler(plugin, true);
-        if (plugin.getConfig().getBoolean("dataSource.disabled", false)) {
+        if (shared || plugin.getConfig().getBoolean("dataSource.disabled", false)) {
             handler.setDataSource(ORM.getSharedSource());
             return handler;
         }

@@ -106,7 +106,11 @@ public class ORM extends JavaPlugin {
     }
 
     public static EbeanHandler getDataHandler(JavaPlugin plugin) {
-        return EbeanManager.DEFAULT.getHandler(plugin);
+        return getDataHandler(plugin, false);
+    }
+
+    public static EbeanHandler getDataHandler(JavaPlugin plugin, boolean shared) {
+        return EbeanManager.DEFAULT.getHandler(plugin, shared);
     }
 
     public static GenericTrigger getGenericTrigger() {
