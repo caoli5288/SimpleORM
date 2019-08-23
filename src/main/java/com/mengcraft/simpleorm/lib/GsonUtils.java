@@ -14,6 +14,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import lombok.SneakyThrows;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
@@ -68,10 +69,22 @@ public class GsonUtils {
     public static Gson createJsonInBuk(FieldNamingPolicy policy) {
         GsonBuilder b = new GsonBuilder();
         b.registerTypeHierarchyAdapter(ConfigurationSerializable.class, new JsonSerializeAdapter());
+        b.registerTypeAdapter(ScriptObjectMirror.class, new ScriptObjectSerializer());
         if (!nil(policy)) {
             b.setFieldNamingPolicy(policy);
         }
         return b.create();
+    }
+
+    public static class ScriptObjectSerializer implements JsonSerializer<ScriptObjectMirror> {
+
+        @Override
+        public JsonElement serialize(ScriptObjectMirror obj, Type t, JsonSerializationContext ctx) {
+            if (obj.isArray()) {
+                return ctx.serialize(obj.values());
+            }
+            return ctx.serialize(obj, Map.class);
+        }
     }
 
     public static class JsonSerializeAdapter implements JsonSerializer<ConfigurationSerializable>, JsonDeserializer<ConfigurationSerializable> {
