@@ -111,7 +111,7 @@ public class EbeanHandler {
         }
         Entity annotation = clz.getAnnotation(Entity.class);
         if (annotation == null) {
-            throw new IllegalArgumentException("Not entity clazz! " + clz);
+            plugin.getLogger().warning(String.format("Exception occurred while register entity class. %s not annotated by @Entity", clz.getName()));
         }
         mapping.add(clz);
     }
