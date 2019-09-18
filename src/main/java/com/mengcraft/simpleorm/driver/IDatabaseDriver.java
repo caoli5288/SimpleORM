@@ -22,7 +22,7 @@ public abstract class IDatabaseDriver {
         try {
             Class.forName(clazz());
         } catch (ClassNotFoundException e) {
-            LibraryLoader.load(JavaPlugin.getPlugin(ORM.class), MavenLibrary.of(description()));
+            LibraryLoader.load(JavaPlugin.getPlugin(ORM.class), MavenLibrary.of(description()), true);
             load();
         }
     }

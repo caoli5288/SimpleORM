@@ -62,7 +62,7 @@ public class ORM extends JavaPlugin {
     }
 
     private static void loadExtLibrary(JavaPlugin plugin) {
-        LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"));
+        LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"), true);
     }
 
     @Override
