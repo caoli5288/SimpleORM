@@ -34,6 +34,10 @@ public class GenericTrigger {
         return listener;
     }
 
+    public Map<String, Object> trigger(@NonNull String category, @NonNull String key, @NonNull Object value) {
+        return trigger(category, ImmutableMap.of(key, value));
+    }
+
     public Map<String, Object> trigger(@NonNull String category, @NonNull ImmutableMap<String, Object> params) {
         Map<String, Object> object = new HashMap<>();
         for (TriggerListener listener : functions.get(category)) {

@@ -7,8 +7,8 @@
 
     <repositories>
         <repository>
-            <id>bukkit-ci</id>
-            <url>http://ci.mengcraft.com:8081/plugin/repository/everything/</url>
+            <id>i7mc_repository</id>
+            <url>http://repository.i7mc.com:8008/</url>
         </repository>
     </repositories>
 
