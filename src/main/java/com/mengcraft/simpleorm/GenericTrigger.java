@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +21,15 @@ public class GenericTrigger {
 
     private final Multimap<String, TriggerListener> functions = ArrayListMultimap.create();
 
-    public TriggerListener on(@NonNull String category, @NonNull BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> function) {
-        TriggerListener listener = new TriggerListener(category, function);
+    /**
+     * @deprecated
+     */
+    public TriggerListener on(@NonNull String category, @NonNull BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> consumer) {
+        return on(category, processor(consumer));
+    }
+
+    public TriggerListener on(@NonNull String category, @NonNull IProcessor processor) {
+        TriggerListener listener = new TriggerListener(category, processor);
         functions.put(category, listener);
         return listener;
     }
@@ -29,25 +37,38 @@ public class GenericTrigger {
     public Map<String, Object> trigger(@NonNull String category, @NonNull ImmutableMap<String, Object> params) {
         Map<String, Object> object = new HashMap<>();
         for (TriggerListener listener : functions.get(category)) {
-            listener.function.accept(params, object);
+            listener.processor.process(params, object);
         }
         return object;
+    }
+
+    public Map<String, Object> trigger(@NonNull String category, @NonNull ConfigurationSerializable serializable) {
+        return trigger(category, ImmutableMap.copyOf(serializable.serialize()));
     }
 
     public Map<String, Object> trigger(@NonNull String category) {
         return trigger(category, ImmutableMap.of());
     }
 
-    @EqualsAndHashCode(exclude = "function")
+    private IProcessor processor(BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> consumer) {
+        return consumer::accept;
+    }
+
+    public interface IProcessor {
+
+        void process(ImmutableMap<String, Object> params, Map<String, Object> result);
+    }
+
+    @EqualsAndHashCode(of = "id")
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public class TriggerListener {
 
         private final UUID id = UUID.randomUUID();
         private final String category;
-        private final BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> function;
+        private final IProcessor processor;
 
-        public void cancel() {
-            functions.remove(category, this);
+        public boolean cancel() {
+            return functions.remove(category, this);
         }
     }
 

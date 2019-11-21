@@ -13,10 +13,10 @@
     </repositories>
 
     <distributionManagement>
-        <snapshotRepository>
-            <id>i7mc</id>
-            <url>http://p.i7mc.com:8082/repository/internal/</url>
-        </snapshotRepository>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/caoli5288/simpleorm</url>
+        </repository>
     </distributionManagement>
 
     <dependencies>
