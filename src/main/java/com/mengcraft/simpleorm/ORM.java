@@ -11,10 +11,14 @@ import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -82,6 +86,7 @@ public class ORM extends JavaPlugin {
                 globalMongoWrapper = MongoWrapper.b(url);
             }
         }
+        getServer().getPluginManager().registerEvents(new OrmListener(), this);
         getLogger().info("Welcome!");
     }
 
@@ -154,16 +159,38 @@ public class ORM extends JavaPlugin {
         return json.fromJson(json.toJsonTree(map), clz);
     }
 
+    private static final String PLAYER_METADATA_KEY = "orm_metadata";
+
     public static <T> T attr(Player player, String key, Supplier<T> defaultValue) {
-        if (player.hasMetadata(key)) {
-            return (T) player.getMetadata(key).get(0).value();
-        }
-        if (defaultValue == null) {
-            return null;
-        } else {
+        if (player.hasMetadata(PLAYER_METADATA_KEY)) {
+            Map<String, Object> metadata = (Map<String, Object>) player.getMetadata(key).get(0).value();
+            if (metadata.containsKey(key)) {
+                return (T) metadata.get(key);
+            }
+            if (defaultValue == null) {
+                return null;
+            }
             T value = Objects.requireNonNull(defaultValue.get());
-            player.setMetadata(key, new FixedMetadataValue(plugin, value));
+            metadata.put(key, value);
             return value;
+        } else {
+            if (defaultValue == null) {
+                return null;
+            }
+            T value = Objects.requireNonNull(defaultValue.get());
+            Map<String, Object> metadata = new HashMap<>();
+            player.setMetadata(PLAYER_METADATA_KEY, new FixedMetadataValue(plugin, metadata));
+            metadata.put(key, value);
+            return value;
+        }
+    }
+
+    public class OrmListener implements Listener {
+
+        @EventHandler
+        public void on(PlayerQuitEvent event) {
+            Player p = event.getPlayer();
+            p.removeMetadata(PLAYER_METADATA_KEY, plugin);// Or will leads leaks
         }
     }
 }
