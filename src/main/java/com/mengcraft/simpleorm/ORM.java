@@ -1,11 +1,13 @@
 package com.mengcraft.simpleorm;
 
+import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.lib.Reflector;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
@@ -161,22 +163,49 @@ public class ORM extends JavaPlugin {
 
     private static final String PLAYER_METADATA_KEY = "orm_metadata";
 
-    public static <T> T attr(Player player, String key, Supplier<T> defaultValue) {
+    public static <T> T attr(Player player, @NonNull String key) {
+        Preconditions.checkState(player.isOnline(), "player not online");
         if (player.hasMetadata(PLAYER_METADATA_KEY)) {
-            Map<String, Object> metadata = (Map<String, Object>) player.getMetadata(key).get(0).value();
+            Map<String, Object> metadata = (Map<String, Object>) player.getMetadata(PLAYER_METADATA_KEY).get(0).value();
+            return (T) metadata.get(key);
+        }
+        return null;
+    }
+
+    public static <T> void attr(Player player, @NonNull String key, T value) {
+        Preconditions.checkState(player.isOnline(), "player not online");
+        Preconditions.checkState(Bukkit.isPrimaryThread(), "cannot modify player attributes async");
+        if (player.hasMetadata(PLAYER_METADATA_KEY)) {
+            Map<String, Object> metadata = (Map<String, Object>) player.getMetadata(PLAYER_METADATA_KEY).get(0).value();
+            if (value == null) {
+                metadata.remove(key);
+            } else {
+                metadata.put(key, value);
+            }
+        } else {
+            if (value == null) {
+                return;
+            }
+            Map<String, Object> metadata = new HashMap<>();
+            player.setMetadata(PLAYER_METADATA_KEY, new FixedMetadataValue(plugin, metadata));
+            metadata.put(key, value);
+        }
+    }
+
+    @Deprecated
+    public static <T> T attr(Player player, @NonNull String key, @NonNull Supplier<T> defaultValue) {
+        Preconditions.checkState(player.isOnline(), "player not online");
+        if (player.hasMetadata(PLAYER_METADATA_KEY)) {
+            Map<String, Object> metadata = (Map<String, Object>) player.getMetadata(PLAYER_METADATA_KEY).get(0).value();
             if (metadata.containsKey(key)) {
                 return (T) metadata.get(key);
             }
-            if (defaultValue == null) {
-                return null;
-            }
+            Preconditions.checkState(Bukkit.isPrimaryThread(), "cannot modify player attributes async");
             T value = Objects.requireNonNull(defaultValue.get());
             metadata.put(key, value);
             return value;
         } else {
-            if (defaultValue == null) {
-                return null;
-            }
+            Preconditions.checkState(Bukkit.isPrimaryThread(), "cannot modify player attributes async");
             T value = Objects.requireNonNull(defaultValue.get());
             Map<String, Object> metadata = new HashMap<>();
             player.setMetadata(PLAYER_METADATA_KEY, new FixedMetadataValue(plugin, metadata));
