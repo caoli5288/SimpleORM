@@ -21,15 +21,8 @@ public class GenericTrigger {
 
     private final Multimap<String, TriggerListener> functions = ArrayListMultimap.create();
 
-    /**
-     * @deprecated
-     */
     public TriggerListener on(@NonNull String category, @NonNull BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> consumer) {
-        return on(category, processor(consumer));
-    }
-
-    public TriggerListener on(@NonNull String category, @NonNull IProcessor processor) {
-        TriggerListener listener = new TriggerListener(category, processor);
+        TriggerListener listener = new TriggerListener(category, consumer);
         functions.put(category, listener);
         return listener;
     }
@@ -39,11 +32,11 @@ public class GenericTrigger {
     }
 
     public Map<String, Object> trigger(@NonNull String category, @NonNull ImmutableMap<String, Object> params) {
-        Map<String, Object> object = new HashMap<>();
+        Map<String, Object> res = new HashMap<>();
         for (TriggerListener listener : functions.get(category)) {
-            listener.processor.process(params, object);
+            listener.processor.accept(params, res);
         }
-        return object;
+        return res;
     }
 
     public Map<String, Object> trigger(@NonNull String category, @NonNull ConfigurationSerializable serializable) {
@@ -54,22 +47,13 @@ public class GenericTrigger {
         return trigger(category, ImmutableMap.of());
     }
 
-    private IProcessor processor(BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> consumer) {
-        return consumer::accept;
-    }
-
-    public interface IProcessor {
-
-        void process(ImmutableMap<String, Object> params, Map<String, Object> result);
-    }
-
     @EqualsAndHashCode(of = "id")
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public class TriggerListener {
 
         private final UUID id = UUID.randomUUID();
         private final String category;
-        private final IProcessor processor;
+        private final BiConsumer<ImmutableMap<String, Object>, Map<String, Object>> processor;
 
         public boolean cancel() {
             return functions.remove(category, this);
