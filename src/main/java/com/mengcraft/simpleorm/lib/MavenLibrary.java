@@ -114,8 +114,8 @@ public class MavenLibrary extends Library {
             Files.copy(new URL(url + ".jar").openStream(),
                     getFile().toPath(),
                     StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(new URL(url + ".jar.md5").openStream(),
-                    new File(getFile().getParentFile(), getFile().getName() + ".md5").toPath(),
+            Files.copy(new URL(url + ".jar.sha1").openStream(),
+                    new File(getFile().getParentFile(), getFile().getName() + ".sha1").toPath(),
                     StandardCopyOption.REPLACE_EXISTING);
             Files.copy(new URL(url + ".pom").openStream(),
                     new File(getFile().getParentFile(), getFile().getName() + ".pom").toPath(),
@@ -135,7 +135,7 @@ public class MavenLibrary extends Library {
             val md5 = new File(file.getParentFile(), file.getName() + ".md5");
             if (md5.isFile()) {
                 byte[] buf = Files.readAllBytes(file.toPath());
-                MessageDigest d = MessageDigestLocal.algorithm("md5");
+                MessageDigest d = MessageDigestLocal.algorithm("sha1");
                 String result = Hex.hex(d.digest(buf));
                 String l = Files.newBufferedReader(md5.toPath()).readLine();
                 return l.indexOf(' ') == -1 ? l.equals(result) : Iterators.forArray(l.split(" ")).next().equals(result);
@@ -157,8 +157,8 @@ public class MavenLibrary extends Library {
 
     public enum Repository {
 
-        CENTRAL("http://central.maven.org/maven2"),
-        I7MC("http://ci.mengcraft.com:8080/plugin/repository/everything");
+        CENTRAL("http://repo1.maven.org/maven2"),
+        I7MC("http://repository.i7mc.com:8008");
 
         final String repository;
 
