@@ -157,8 +157,8 @@ public class MavenLibrary extends Library {
 
     public enum Repository {
 
-        CENTRAL("http://central.maven.org/maven2"),
-        I7MC("http://ci.mengcraft.com:8080/plugin/repository/everything");
+        CENTRAL("https://repo1.maven.org/maven2"),
+        I7MC("http://repository.i7mc.com:8008");
 
         final String repository;
 
