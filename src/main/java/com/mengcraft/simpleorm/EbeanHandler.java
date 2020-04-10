@@ -139,8 +139,9 @@ public class EbeanHandler {
      * Create defined classes's tables.
      *
      * @param ignore Ignore exception when run create table.
+     * @return true only if performed create tables sql
      */
-    public void install(boolean ignore) {
+    public boolean install(boolean ignore) {
         validInitialized();
         try {
             for (Class<?> line : mapping) {
@@ -153,17 +154,19 @@ public class EbeanHandler {
             DdlGenerator gen = ((SpiEbeanServer) server).getDdlGenerator();
             gen.runScript(ignore, gen.generateCreateDdl());
             plugin.getLogger().info("Create tables done!");
+            return true;
         }
+        return false;
     }
 
-    public void install() {
-        install(false);
+    public boolean install() {
+        return install(false);
     }
 
     protected HikariDataSource createSource() {
         HikariDataSource source = new HikariDataSource();
         source.setPoolName(name);
-        source.setConnectionTimeout(10_000);
+        source.setConnectionTimeout(5_000);
         source.setJdbcUrl(IDatabaseDriver.validAndLoad(url));
         source.setUsername(user);
         source.setPassword(password);
