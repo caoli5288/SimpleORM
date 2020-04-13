@@ -139,9 +139,8 @@ public class EbeanHandler {
      * Create defined classes's tables.
      *
      * @param ignore Ignore exception when run create table.
-     * @return true only if performed create tables sql
      */
-    public boolean install(boolean ignore) {
+    public void install(boolean ignore, Runnable postprocessor) {
         validInitialized();
         try {
             for (Class<?> line : mapping) {
@@ -154,13 +153,19 @@ public class EbeanHandler {
             DdlGenerator gen = ((SpiEbeanServer) server).getDdlGenerator();
             gen.runScript(ignore, gen.generateCreateDdl());
             plugin.getLogger().info("Create tables done!");
-            return true;
+            if (postprocessor != null) {
+                postprocessor.run();
+                plugin.getLogger().info("Execute postprocessor done!");
+            }
         }
-        return false;
     }
 
-    public boolean install() {
-        return install(false);
+    public void install(boolean ignore) {
+        install(ignore, null);
+    }
+
+    public void install() {
+        install(false);
     }
 
     protected HikariDataSource createSource() {
