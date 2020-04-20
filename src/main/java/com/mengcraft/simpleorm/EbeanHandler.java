@@ -144,7 +144,7 @@ public class EbeanHandler {
         validInitialized();
         try {
             for (Class<?> line : mapping) {
-                server.find(line).setMaxRows(1).findUnique();
+                server.find(line).setMaxRows(1).findList();
             }
             plugin.getLogger().info("Tables already exists!");
         } catch (Exception e) {
@@ -215,6 +215,9 @@ public class EbeanHandler {
         if (dataSource.getJdbcUrl().startsWith("jdbc:sqlite:")) {
             conf.setDatabasePlatform(new SQLitePlatform());
             conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
+        }
+        if (plugin.getDataFolder().isDirectory() || plugin.getDataFolder().mkdir()) {
+            conf.setResourceDirectory(plugin.getDataFolder().toString());
         }
 
         for (Class<?> type : mapping) {
