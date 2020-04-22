@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
 import com.avaje.ebean.EbeanServerFactory;
+import com.avaje.ebean.LogLevel;
 import com.avaje.ebean.Query;
 import com.avaje.ebean.config.ServerConfig;
 import com.avaje.ebean.config.dbplatform.SQLitePlatform;
@@ -49,6 +50,7 @@ public class EbeanHandler {
     private String url;
     private String user;
     private String password;
+    private LogLevel loggingLevel = LogLevel.NONE;
 
     private int coreSize;
     private int maxSize = ORM.getMaximumSize();
@@ -212,6 +214,8 @@ public class EbeanHandler {
         ServerConfig conf = new ServerConfig();
         conf.setName(name);
         conf.setDataSource(dataSource);
+        conf.setLoggingLevel(loggingLevel);
+        conf.setLoggingToJavaLogger(true);
         if (dataSource.getJdbcUrl().startsWith("jdbc:sqlite:")) {
             conf.setDatabasePlatform(new SQLitePlatform());
             conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
@@ -386,6 +390,14 @@ public class EbeanHandler {
 
     public IsolationLevel getIsolationLevel() {
         return this.isolationLevel;
+    }
+
+    public LogLevel getLoggingLevel() {
+        return loggingLevel;
+    }
+
+    public void setLoggingLevel(LogLevel loggingLevel) {
+        this.loggingLevel = loggingLevel;
     }
 
     public static EbeanHandler build(@NonNull JavaPlugin plugin, @NonNull Map<String, String> map) {
