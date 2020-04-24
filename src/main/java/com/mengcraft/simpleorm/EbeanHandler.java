@@ -12,6 +12,7 @@ import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.mengcraft.simpleorm.driver.IDatabaseDriver;
+import com.mengcraft.simpleorm.lib.Utils;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -21,6 +22,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.persistence.Entity;
+import javax.sql.DataSource;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Connection;
@@ -42,7 +44,7 @@ public class EbeanHandler {
     private final boolean managed;
     private final UUID id = UUID.randomUUID();
 
-    private HikariDataSource dataSource;
+    private DataSource dataSource;
     private Map<String, String> properties;
     private String heartbeat;
     private String name;
@@ -170,7 +172,7 @@ public class EbeanHandler {
         install(false);
     }
 
-    protected HikariDataSource createSource() {
+    DataSource newDataSource() {
         HikariDataSource source = new HikariDataSource();
         source.setPoolName(name);
         source.setConnectionTimeout(5_000);
@@ -180,10 +182,10 @@ public class EbeanHandler {
         source.setAutoCommit(false);
         source.setMinimumIdle(Math.max(1, coreSize));
         source.setMaximumPoolSize(maxSize);
-        if (driver != null && !driver.isEmpty()) {
+        if (!Utils.isNullOrEmpty(driver)) {
             source.setDriverClassName(driver);
         }
-        if (heartbeat != null && !heartbeat.isEmpty()) {
+        if (!Utils.isNullOrEmpty(heartbeat)) {
             source.setConnectionTestQuery(heartbeat);
         }
         if (isolationLevel != null) {
@@ -208,7 +210,7 @@ public class EbeanHandler {
         PolicyInjector.inject();// Hacked in forge server
 
         if (dataSource == null) {
-            dataSource = createSource();
+            dataSource = ORM.getDataSourceProvider().getDataSource(this);
         }
 
         ServerConfig conf = new ServerConfig();
@@ -216,7 +218,7 @@ public class EbeanHandler {
         conf.setDataSource(dataSource);
         conf.setLoggingLevel(loggingLevel);
         conf.setLoggingToJavaLogger(true);
-        if (dataSource.getJdbcUrl().startsWith("jdbc:sqlite:")) {
+        if (dataSource instanceof HikariDataSource && ((HikariDataSource) dataSource).getJdbcUrl().startsWith("jdbc:sqlite:")) {
             conf.setDatabasePlatform(new SQLitePlatform());
             conf.getDatabasePlatform().getDbDdlSyntax().setIdentity("");
         }
@@ -369,8 +371,8 @@ public class EbeanHandler {
             val i = clz.getDeclaredConstructor(DefaultServer.class);
             i.setAccessible(true);
             ((Runnable) i.newInstance(server)).run();
-            if (!dataSource.getPoolName().equals("simple_shared")) {// Never shutdown shared
-                dataSource.close();
+            if (dataSource instanceof HikariDataSource && !((HikariDataSource) dataSource).getPoolName().equals("simple_shared")) {// Never shutdown shared
+                ((HikariDataSource) dataSource).close();
             }
             if (managed) {
                 EbeanManager.unHandle(this);
@@ -380,7 +382,7 @@ public class EbeanHandler {
         }
     }
 
-    public void setDataSource(HikariDataSource dataSource) {
+    public void setDataSource(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 

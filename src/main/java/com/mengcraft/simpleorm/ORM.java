@@ -6,6 +6,7 @@ import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.lib.Reflector;
+import com.mengcraft.simpleorm.provider.IDataSourceProvider;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -20,6 +21,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +38,7 @@ public class ORM extends JavaPlugin {
     private static MongoWrapper globalMongoWrapper;
     private static HikariDataSource sharedSource;
     private static ORM plugin;
+    private static IDataSourceProvider dataSourceProvider = new DefaultDataSourceProvider();
 
     @Override
     public void onLoad() {
@@ -211,6 +214,22 @@ public class ORM extends JavaPlugin {
             player.setMetadata(PLAYER_METADATA_KEY, new FixedMetadataValue(plugin, metadata));
             metadata.put(key, value);
             return value;
+        }
+    }
+
+    public static IDataSourceProvider getDataSourceProvider() {
+        return dataSourceProvider;
+    }
+
+    public static void setDataSourceProvider(IDataSourceProvider dataSourceProvider) {
+        ORM.dataSourceProvider = dataSourceProvider;
+    }
+
+    private static class DefaultDataSourceProvider implements IDataSourceProvider {
+
+        @Override
+        public DataSource getDataSource(EbeanHandler handler) {
+            return handler.newDataSource();
         }
     }
 
