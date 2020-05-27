@@ -15,7 +15,6 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
-import lombok.SneakyThrows;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
@@ -29,7 +28,7 @@ import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class GsonUtils {
 
-    private static final Field PRIMITIVE_VALUE = REFLECT_PRIMITIVE_VALUE();
+    private static final Field PRIMITIVE_VALUE = Utils.getAccessibleField(JsonPrimitive.class, "value");
     private static TypeFunctionRegistry<Object> registry = new TypeFunctionRegistry<>();
 
     static {
@@ -49,13 +48,6 @@ public class GsonUtils {
             }
             return container;
         });
-    }
-
-    @SneakyThrows
-    private static Field REFLECT_PRIMITIVE_VALUE() {
-        Field value = JsonPrimitive.class.getDeclaredField("value");
-        value.setAccessible(true);
-        return value;
     }
 
     public static Object dump(JsonElement value) {
