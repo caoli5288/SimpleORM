@@ -11,7 +11,7 @@ import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
-import com.mengcraft.simpleorm.annotation.Indexes;
+import com.mengcraft.simpleorm.annotation.Index;
 import com.mengcraft.simpleorm.driver.IDatabaseDriver;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.zaxxer.hikari.HikariDataSource;
@@ -169,21 +169,21 @@ public class EbeanHandler {
     }
 
     private void indexesGenerator(Class<?> cls) {
-        Indexes[] definitions = cls.getAnnotationsByType(Indexes.class);
+        Index[] definitions = cls.getAnnotationsByType(Index.class);
         if (definitions.length == 0) {
             return;
         }
         String clsName = Utils.translateSqlName(cls).toLowerCase();
         int count = 0;
         String createSql = "CREATE %s %s ON %s (%s)";
-        for (Indexes indexes : definitions) {
-            String[] columnNames = indexes.value();
+        for (Index index : definitions) {
+            String[] columnNames = index.value();
             if (columnNames.length != 0) {
-                String name = indexes.name();
+                String name = index.name();
                 if (Utils.isNullOrEmpty(name)) {
                     name = "auto_index" + count++;
                 }
-                String sql = String.format(createSql, indexes.unique() ? "UNIQUE INDEX" : "INDEX", name, clsName, String.join(", ", columnNames));
+                String sql = String.format(createSql, index.unique() ? "UNIQUE INDEX" : "INDEX", name, clsName, String.join(", ", columnNames));
                 plugin.getLogger().info("execute indexes sql " + sql);
                 server.createSqlUpdate(sql).execute();
             }
