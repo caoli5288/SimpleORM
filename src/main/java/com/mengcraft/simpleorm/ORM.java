@@ -20,6 +20,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -35,7 +36,7 @@ public class ORM extends JavaPlugin {
     private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
-    private static HikariDataSource sharedSource;
+    private static DataSource sharedDs;
     private static ORM plugin;
     private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
     private static IRedisProvider redisProvider;
@@ -54,8 +55,6 @@ public class ORM extends JavaPlugin {
                 EbeanManager.DEFAULT,
                 this,
                 ServicePriority.Normal);
-
-        setEnabled(true);
     }
 
     public static void loadLibrary(JavaPlugin plugin) {
@@ -128,18 +127,39 @@ public class ORM extends JavaPlugin {
         return GENERIC_TRIGGER;
     }
 
-    public synchronized static HikariDataSource getSharedSource() {
-        if (sharedSource == null) {
-            sharedSource = new HikariDataSource();
-            sharedSource.setPoolName("simple_shared");
-            sharedSource.setJdbcUrl(plugin.getConfig().getString("dataSource.url"));
-            sharedSource.setUsername(plugin.getConfig().getString("dataSource.user"));
-            sharedSource.setPassword(plugin.getConfig().getString("dataSource.password"));
-            sharedSource.setAutoCommit(false);
-            sharedSource.setMinimumIdle(1);
-            sharedSource.setMaximumPoolSize(getMaximumSize());
+    /**
+     * @deprecated It's maybe not always HikariDataSource because of the opened setSharedDs function.
+     */
+    public static HikariDataSource getSharedSource() {
+        return (HikariDataSource) getSharedDs();
+    }
+
+    public static DataSource getSharedDs() {// SharedDs
+        if (sharedDs == null) {
+            synchronized (ORM.class) {
+                if (sharedDs == null) {
+                    sharedDs = newSource();
+                }
+            }
         }
-        return sharedSource;
+        return sharedDs;
+    }
+
+    public static void setSharedDs(@NonNull DataSource sharedDs) {
+        Preconditions.checkState(Bukkit.isPrimaryThread(), "async set shared data-source");
+        ORM.sharedDs = sharedDs;
+    }
+
+    private static DataSource newSource() {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setPoolName("simple_shared");
+        ds.setJdbcUrl(plugin.getConfig().getString("dataSource.url"));
+        ds.setUsername(plugin.getConfig().getString("dataSource.user"));
+        ds.setPassword(plugin.getConfig().getString("dataSource.password"));
+//        ds.setAutoCommit(false);
+        ds.setMinimumIdle(1);
+        ds.setMaximumPoolSize(getMaximumSize());
+        return ds;
     }
 
     public static Map<String, Object> serialize(Object any) {
