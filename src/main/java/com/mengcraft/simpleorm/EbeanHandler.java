@@ -390,6 +390,11 @@ public class EbeanHandler {
         this.heartbeat = heartbeat;
     }
 
+    public DataSource getDataSource() {
+        Preconditions.checkNotNull(dataSource, "dataSource not initialized");
+        return dataSource;
+    }
+
     /**
      * @deprecated not very recommend to call this method manual, it will shutdown automatic while JVM down
      */
