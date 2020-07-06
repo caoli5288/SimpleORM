@@ -46,12 +46,11 @@ public class EbeanManager {
     }
 
     private EbeanHandler build(JavaPlugin plugin, boolean shared) {
-        EbeanHandler handler = new EbeanHandler(plugin, true);
         if (shared || plugin.getConfig().getBoolean("dataSource.disabled", false)) {
-            handler.setDataSource(ORM.getSharedSource());
-            return handler;
+            return new EbeanHandler(plugin, true, ORM.getSharedDs());
         }
 
+        EbeanHandler handler = new EbeanHandler(plugin);
         String url = plugin.getConfig().getString("dataSource.url");
         String user = plugin.getConfig().getString("dataSource.user");
         if (user == null) {

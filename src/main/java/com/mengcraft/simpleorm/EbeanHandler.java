@@ -61,14 +61,15 @@ public class EbeanHandler {
     private IsolationLevel isolationLevel;
     private EbeanServer server;
 
-    EbeanHandler(JavaPlugin plugin, boolean managed) {
+    EbeanHandler(JavaPlugin plugin, boolean managed, DataSource dataSource) {
         name = plugin.getName() + '@' + id;
         this.plugin = plugin;
         this.managed = managed;
+        this.dataSource = dataSource;
     }
 
     public EbeanHandler(JavaPlugin plugin) {
-        this(plugin, false);
+        this(plugin, false, null);
     }
 
     @Override
@@ -198,6 +199,9 @@ public class EbeanHandler {
         install(false);
     }
 
+    /**
+     * @deprecated Internal only for  {@link DataSourceProvider}
+     */
     DataSource newDataSource() {
         HikariDataSource source = new HikariDataSource();
         source.setPoolName(name);
@@ -406,10 +410,6 @@ public class EbeanHandler {
         } catch (Exception e) {
             throw new DatabaseException(e);
         }
-    }
-
-    public void setDataSource(DataSource dataSource) {
-        this.dataSource = dataSource;
     }
 
     public void setIsolationLevel(IsolationLevel isolationLevel) {
