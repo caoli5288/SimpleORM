@@ -7,6 +7,8 @@ import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.lib.Reflector;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
+import com.mengcraft.simpleorm.provider.IRedisProvider;
+import com.mengcraft.simpleorm.redis.RedisProviders;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -14,14 +16,10 @@ import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +29,7 @@ import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class ORM extends JavaPlugin {
 
+    public static final String PLAYER_METADATA_KEY = "ORM_METADATA";
     private static final int MAXIMUM_SIZE = Math.min(20, Runtime.getRuntime().availableProcessors() + 1);
     private static final GenericTrigger GENERIC_TRIGGER = new GenericTrigger();
     private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
@@ -38,7 +37,8 @@ public class ORM extends JavaPlugin {
     private static MongoWrapper globalMongoWrapper;
     private static HikariDataSource sharedSource;
     private static ORM plugin;
-    private static IDataSourceProvider dataSourceProvider = new DefaultDataSourceProvider();
+    private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
+    private static IRedisProvider redisProvider;
 
     @Override
     public void onLoad() {
@@ -79,11 +79,12 @@ public class ORM extends JavaPlugin {
     public void onEnable() {
         new MetricsLite(this);
         if (nil(globalRedisWrapper)) {
-            String redisUrl = getConfig().getString("redis.url", "");
-            if (!redisUrl.isEmpty()) {
+            if (redisProvider == null) {
+                String redisUrl = getConfig().getString("redis.url", "");
                 int max = getConfig().getInt("redis.max_conn", -1);
-                globalRedisWrapper = RedisWrapper.b(getConfig().getString("redis.master_name"), redisUrl, max);
+                redisProvider = RedisProviders.of(getConfig().getString("redis.master_name"), redisUrl, max);
             }
+            globalRedisWrapper = new RedisWrapper(redisProvider);
         }
         if (nil(globalMongoWrapper)) {
             String url = getConfig().getString("mongo.url", "");
@@ -91,7 +92,7 @@ public class ORM extends JavaPlugin {
                 globalMongoWrapper = MongoWrapper.b(url);
             }
         }
-        getServer().getPluginManager().registerEvents(new OrmListener(), this);
+        getServer().getPluginManager().registerEvents(new Listeners(this), this);
         getLogger().info("Welcome!");
     }
 
@@ -164,8 +165,6 @@ public class ORM extends JavaPlugin {
         return json.fromJson(json.toJsonTree(map), clz);
     }
 
-    private static final String PLAYER_METADATA_KEY = "orm_metadata";
-
     public static <T> T attr(Player player, @NonNull String key) {
         Preconditions.checkState(player.isOnline(), "player not online");
         if (player.hasMetadata(PLAYER_METADATA_KEY)) {
@@ -222,23 +221,12 @@ public class ORM extends JavaPlugin {
     }
 
     public static void setDataSourceProvider(IDataSourceProvider dataSourceProvider) {
+        Preconditions.checkState(!isFullyEnabled(), "Cannot be set after ORM enabled");
         ORM.dataSourceProvider = dataSourceProvider;
     }
 
-    private static class DefaultDataSourceProvider implements IDataSourceProvider {
-
-        @Override
-        public DataSource getDataSource(EbeanHandler handler) {
-            return handler.newDataSource();
-        }
-    }
-
-    public class OrmListener implements Listener {
-
-        @EventHandler
-        public void on(PlayerQuitEvent event) {
-            Player p = event.getPlayer();
-            p.removeMetadata(PLAYER_METADATA_KEY, plugin);// Or will leads leaks
-        }
+    public static void setRedisProvider(IRedisProvider redisProvider) {
+        Preconditions.checkState(!isFullyEnabled(), "Cannot be set after ORM enabled");
+        ORM.redisProvider = redisProvider;
     }
 }

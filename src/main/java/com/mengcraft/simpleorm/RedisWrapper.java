@@ -4,32 +4,25 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.mengcraft.simpleorm.lib.Utils;
+import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
 import com.mengcraft.simpleorm.redis.RedisMessageTopic;
 import lombok.Cleanup;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import redis.clients.jedis.BinaryJedisPubSub;
 import redis.clients.jedis.Client;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.params.SetParams;
 
 import java.io.Closeable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -38,42 +31,17 @@ import static com.mengcraft.simpleorm.ORM.nil;
 
 public class RedisWrapper implements Closeable {
 
-    private final JedisResources resources;
+    private final IRedisProvider resources;
     private MessageFilter filter;
 
-    private RedisWrapper(JedisPool pool) {
-        resources = new GenericJedisResources(pool);
-    }
-
-    private RedisWrapper(JedisSentinelPool sentinels) {
-        resources = new SentinelJedisResources(sentinels);
+    public RedisWrapper(IRedisProvider resources) {
+        this.resources = resources;
     }
 
     @Override
     @SneakyThrows
     public void close() {
         resources.close();
-    }
-
-    public static RedisWrapper b(String sentinel, String url, int conn) {
-        GenericObjectPoolConfig config = new GenericObjectPoolConfig();
-        if (conn >= 1) {
-            config.setMaxTotal(conn);
-        }
-        if (sentinel == null || sentinel.isEmpty()) {
-            return new RedisWrapper(new JedisPool(config, URI.create(url)));
-        }
-        Set<String> sentinels = new HashSet<>();
-        if (url.matches("redis://(.+[,].+)")) {
-            Collections.addAll(sentinels, url.substring(8).split(","));
-        } else {
-            String[] split = url.split(";");
-            for (String line : split) {
-                URI uri = URI.create(line);
-                sentinels.add(uri.getHost() + ':' + uri.getPort());
-            }
-        }
-        return new RedisWrapper(new JedisSentinelPool(sentinel, sentinels, config));
     }
 
     public String ping() throws JedisConnectionException {
@@ -229,42 +197,6 @@ public class RedisWrapper implements Closeable {
 
     public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
         return new RedisLiveObjectBucket(this, bucket);
-    }
-
-    private interface JedisResources extends Closeable {
-
-        Jedis getResource();
-    }
-
-    @RequiredArgsConstructor
-    public class SentinelJedisResources implements JedisResources {
-
-        private final JedisSentinelPool pool;
-
-        @Override
-        public Jedis getResource() {
-            return pool.getResource();
-        }
-
-        @Override
-        public void close() {
-            pool.close();
-        }
-    }
-
-    @RequiredArgsConstructor
-    public class GenericJedisResources implements JedisResources {
-
-        private final JedisPool pool;
-        @Override
-        public Jedis getResource() {
-            return pool.getResource();
-        }
-
-        @Override
-        public void close() {
-            pool.close();
-        }
     }
 
     private static class MessageFilter extends BinaryJedisPubSub {
