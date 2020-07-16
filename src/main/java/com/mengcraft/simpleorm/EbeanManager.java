@@ -50,7 +50,7 @@ public class EbeanManager {
             return new EbeanHandler(plugin, true, ORM.getSharedDs());
         }
 
-        EbeanHandler handler = new EbeanHandler(plugin);
+        EbeanHandler handler = new EbeanHandler(plugin, true, null);
         String url = plugin.getConfig().getString("dataSource.url");
         String user = plugin.getConfig().getString("dataSource.user");
         if (user == null) {
