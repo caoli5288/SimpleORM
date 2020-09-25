@@ -7,6 +7,7 @@ redis:
   master_name: null
   url: redis://localhost:6379
   max_conn: 20
+  password: null
 
 mongo:
   url: mongodb://localhost

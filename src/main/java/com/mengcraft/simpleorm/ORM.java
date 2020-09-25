@@ -14,6 +14,7 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -79,9 +80,10 @@ public class ORM extends JavaPlugin {
         new MetricsLite(this);
         if (nil(globalRedisWrapper)) {
             if (redisProvider == null) {
-                String redisUrl = getConfig().getString("redis.url", "");
-                int max = getConfig().getInt("redis.max_conn", -1);
-                redisProvider = RedisProviders.of(getConfig().getString("redis.master_name"), redisUrl, max);
+                FileConfiguration config = getConfig();
+                String redisUrl = config.getString("redis.url", "");
+                int max = config.getInt("redis.max_conn", -1);
+                redisProvider = RedisProviders.of(config.getString("redis.master_name"), redisUrl, max, config.getString("redis.password"));
             }
             globalRedisWrapper = new RedisWrapper(redisProvider);
         }
