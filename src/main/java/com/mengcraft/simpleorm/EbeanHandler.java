@@ -206,7 +206,7 @@ public class EbeanHandler {
         HikariDataSource source = new HikariDataSource();
         source.setPoolName(name);
         source.setConnectionTimeout(5_000);
-        source.setJdbcUrl(IDatabaseDriver.validAndLoad(url));
+        source.setJdbcUrl(IDatabaseDriver.filter(url));
         source.setUsername(user);
         source.setPassword(password);
         source.setAutoCommit(false);

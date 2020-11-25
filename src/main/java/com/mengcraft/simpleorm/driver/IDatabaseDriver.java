@@ -27,7 +27,7 @@ public abstract class IDatabaseDriver {
         }
     }
 
-    public static String validAndLoad(String jdbc) {
+    public static String filter(String jdbc) {
         URI uri = URI.create(jdbc);
         if (!Objects.equals(uri.getScheme(), "jdbc")) {
             throw new IllegalArgumentException(jdbc + " is not valid jdbc url");
@@ -48,6 +48,7 @@ public abstract class IDatabaseDriver {
         static {
             register(new H2Driver());
             register(new PostgreDriver());
+            register(new MySqlDriver());
         }
 
         private static void register(IDatabaseDriver driver) {
