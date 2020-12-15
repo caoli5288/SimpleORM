@@ -10,6 +10,7 @@ import com.mengcraft.simpleorm.provider.IDataSourceProvider;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisProviders;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -25,7 +26,9 @@ import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
@@ -38,9 +41,11 @@ public class ORM extends JavaPlugin {
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
     private static DataSource sharedDs;
-    private static ORM plugin;
+    static ORM plugin;
     private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
     private static IRedisProvider redisProvider;
+    @Getter
+    private static FluxWorkers workers;
 
     @Override
     public void onLoad() {
@@ -78,6 +83,7 @@ public class ORM extends JavaPlugin {
     @SneakyThrows
     public void onEnable() {
         new MetricsLite(this);
+        workers = new FluxWorkers(getConfig().getInt("cpus", 8));
         if (nil(globalRedisWrapper)) {
             if (redisProvider == null) {
                 FileConfiguration config = getConfig();
@@ -95,6 +101,16 @@ public class ORM extends JavaPlugin {
         }
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
         getLogger().info("Welcome!");
+    }
+
+    @Override
+    public void onDisable() {
+        workers.close();
+        try {
+            workers.awaitClose(Integer.MAX_VALUE);
+        } catch (InterruptedException e) {
+            getLogger().log(Level.WARNING, "Error occurred while await workers closed", e);
+        }
     }
 
     public static boolean nil(Object any) {
@@ -250,5 +266,21 @@ public class ORM extends JavaPlugin {
     public static void setRedisProvider(IRedisProvider redisProvider) {
         Preconditions.checkState(!isFullyEnabled(), "Cannot be set after ORM enabled");
         ORM.redisProvider = redisProvider;
+    }
+
+    public static CompletableFuture<Void> enqueue(Runnable runnable) {
+        return CompletableFuture.runAsync(runnable, workers.of());
+    }
+
+    public static CompletableFuture<Void> enqueue(String ns, Runnable runnable) {
+        return CompletableFuture.runAsync(runnable, workers.of(ns));
+    }
+
+    public static <T> CompletableFuture<T> enqueue(Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(supplier, workers.of());
+    }
+
+    public static <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(supplier, workers.of(ns));
     }
 }

@@ -11,3 +11,5 @@ redis:
 
 mongo:
   url: mongodb://localhost
+
+cpus: 8
