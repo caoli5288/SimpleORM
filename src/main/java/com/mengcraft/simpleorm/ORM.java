@@ -6,6 +6,7 @@ import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
+import com.mengcraft.simpleorm.provider.IHandlerInitializer;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisProviders;
 import com.mengcraft.simpleorm.serializable.SerializableTypes;
@@ -136,6 +137,10 @@ public class ORM extends JavaPlugin {
 
     public static EbeanHandler getDataHandler(JavaPlugin plugin, boolean shared) {
         return EbeanManager.DEFAULT.getHandler(plugin, shared);
+    }
+
+    public static EbeanHandler getDataHandler(JavaPlugin plugin, IHandlerInitializer initializer) {
+        return EbeanManager.DEFAULT.getHandler(plugin, initializer);
     }
 
     public static GenericTrigger getGenericTrigger() {
