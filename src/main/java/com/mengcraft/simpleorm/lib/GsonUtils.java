@@ -14,6 +14,10 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import com.mengcraft.simpleorm.serializable.CustomTypeAdapter;
+import com.mengcraft.simpleorm.serializable.GsonDeserializer;
+import com.mengcraft.simpleorm.serializable.IDeserializer;
+import com.mengcraft.simpleorm.serializable.SerializableTypes;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
@@ -24,7 +28,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.mengcraft.simpleorm.ORM.nil;
-import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class GsonUtils {
 
@@ -60,7 +63,7 @@ public class GsonUtils {
 
     public static Gson createJsonInBuk(FieldNamingPolicy policy) {
         GsonBuilder b = new GsonBuilder();
-        b.registerTypeHierarchyAdapter(ConfigurationSerializable.class, new JsonSerializeAdapter());
+        b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
         b.registerTypeAdapter(ScriptObjectMirror.class, new ScriptObjectSerializer());
         if (!nil(policy)) {
             b.setFieldNamingPolicy(policy);
@@ -79,22 +82,22 @@ public class GsonUtils {
         }
     }
 
-    public static class JsonSerializeAdapter implements JsonSerializer<ConfigurationSerializable>, JsonDeserializer<ConfigurationSerializable> {
+    public static class CustomSerializer implements JsonSerializer<ConfigurationSerializable>, JsonDeserializer<ConfigurationSerializable> {
 
         public JsonElement serialize(ConfigurationSerializable input, Type clz, JsonSerializationContext ctx) {
             return ctx.serialize(input.serialize());
         }
 
-        public ConfigurationSerializable deserialize(JsonElement jsonElement, Type clz, JsonDeserializationContext ctx) throws JsonParseException {
-            if (!jsonElement.isJsonObject()) {
+        public ConfigurationSerializable deserialize(JsonElement element, Type type, JsonDeserializationContext ctx) throws JsonParseException {
+            if (!element.isJsonObject()) {
                 return null;
             }
-            Tuple<Class, Object> tuple = tuple(Map.class, dump(jsonElement));
-            try {
-                return Reflector.object((Class<ConfigurationSerializable>) clz, tuple);
-            } catch (Exception ignored) {
+            Class<ConfigurationSerializable> cls = (Class<ConfigurationSerializable>) type;
+            IDeserializer<ConfigurationSerializable> deserializer = SerializableTypes.asDeserializer(cls);
+            if (deserializer == GsonDeserializer.INSTANCE) {// delegate to defaults
+                return null;
             }
-            return Reflector.invoke(clz, "deserialize", tuple);
+            return deserializer.deserialize(cls, (Map<String, ?>) dump(element));
         }
     }
 

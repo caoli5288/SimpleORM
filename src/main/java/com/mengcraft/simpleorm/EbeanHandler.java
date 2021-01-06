@@ -35,8 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
-import static com.mengcraft.simpleorm.lib.Reflector.invoke;
-
 @EqualsAndHashCode(of = "id")
 public class EbeanHandler {
 
@@ -260,20 +258,20 @@ public class EbeanHandler {
             conf.addClass(type);
         }
 
-        ClassLoader mainctx = Thread.currentThread().getContextClassLoader();
+        ClassLoader mainCtx = Thread.currentThread().getContextClassLoader();
         try {
-            URLClassLoader plugctx = (URLClassLoader) Reflect.getLoader(plugin);
+            URLClassLoader cl = (URLClassLoader) Reflect.getLoader(plugin);
             mapping.forEach(clz -> {
                 for (URL jar : ((URLClassLoader) clz.getClassLoader()).getURLs()) {
-                    invoke(plugctx, "addURL", jar);
+                    Utils.addUrl(cl, jar);
                 }
             });
-            Thread.currentThread().setContextClassLoader(plugctx);
+            Thread.currentThread().setContextClassLoader(cl);
             server = EbeanServerFactory.create(conf);
         } catch (Exception e) {
             throw new DatabaseException(e);
         } finally {
-            Thread.currentThread().setContextClassLoader(mainctx);
+            Thread.currentThread().setContextClassLoader(mainCtx);
         }
     }
 

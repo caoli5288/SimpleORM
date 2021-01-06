@@ -5,6 +5,8 @@ import lombok.SneakyThrows;
 import javax.persistence.Table;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 
 public class Utils {
 
@@ -49,5 +51,12 @@ public class Utils {
             return a.name();
         }
         return separateCamelCase(cls.getSimpleName(), "_").toLowerCase();
+    }
+
+    private static final Method URL_CLASS_LOADER_addURL = getAccessibleMethod(URLClassLoader.class, "addURL", URL.class);
+
+    @SneakyThrows
+    public static void addUrl(URLClassLoader cl, URL url) {
+        URL_CLASS_LOADER_addURL.invoke(cl, url);
     }
 }

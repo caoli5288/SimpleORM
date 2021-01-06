@@ -5,15 +5,14 @@ import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
-import com.mengcraft.simpleorm.lib.Reflector;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisProviders;
+import com.mengcraft.simpleorm.serializable.SerializableTypes;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
-import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -29,8 +28,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Level;
-
-import static com.mengcraft.simpleorm.lib.Tuple.tuple;
 
 public class ORM extends JavaPlugin {
 
@@ -192,15 +189,7 @@ public class ORM extends JavaPlugin {
     }
 
     public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
-        if (ConfigurationSerializable.class.isAssignableFrom(clz)) {
-            try {
-                return Reflector.object(clz, tuple(Map.class, map));
-            } catch (Exception ignored) {
-                return Reflector.invoke(clz, "deserialize", tuple(Map.class, map));
-            }
-        }
-        val json = json();
-        return json.fromJson(json.toJsonTree(map), clz);
+        return SerializableTypes.asDeserializer(clz).deserialize(clz, map);
     }
 
     public static <T> T attr(Player player, @NonNull String key) {

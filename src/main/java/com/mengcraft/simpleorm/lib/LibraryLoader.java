@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm.lib;
 
+import com.mengcraft.simpleorm.Reflect;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.bukkit.Bukkit;
@@ -9,10 +10,6 @@ import java.net.URLClassLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static com.mengcraft.simpleorm.lib.Reflector.getField;
-import static com.mengcraft.simpleorm.lib.Reflector.invoke;
-
 
 /**
  * Created on 15-12-13.
@@ -48,9 +45,9 @@ public class LibraryLoader {
             if (global && GLOBAL_LOADER != null) {
                 classLoader = GLOBAL_LOADER;
             } else {
-                classLoader = getField(plugin, "classLoader");
+                classLoader = Reflect.getLoader(plugin);
             }
-            invoke(classLoader, "addURL", lib.toURI().toURL());
+            Utils.addUrl((URLClassLoader) classLoader, lib.toURI().toURL());
 
             plugin.getLogger().info("Load library " + lib + " done");
         }

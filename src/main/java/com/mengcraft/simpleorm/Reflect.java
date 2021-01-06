@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm;
 
 import com.avaje.ebean.EbeanServer;
+import com.mengcraft.simpleorm.lib.Utils;
 import lombok.SneakyThrows;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -9,12 +10,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-import static com.mengcraft.simpleorm.lib.Reflector.getField;
-
 public final class Reflect {
 
     private static final Method SET_DATABASE_ENABLED = INIT_SET_DATABASE_ENABLED();
     private static final Field EBEAN = INIT_EBEAN();
+    private static final Field JAVA_PLUGIN_classLoader = Utils.getAccessibleField(JavaPlugin.class, "classLoader");
 
     private static Method INIT_SET_DATABASE_ENABLED() {
         try {
@@ -48,8 +48,9 @@ public final class Reflect {
         }
     }
 
+    @SneakyThrows
     public static ClassLoader getLoader(Plugin plugin) {
-        return getField(plugin, "classLoader");
+        return (ClassLoader) JAVA_PLUGIN_classLoader.get(plugin);
     }
 
     public static boolean isLegacy() {
