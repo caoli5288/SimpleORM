@@ -57,7 +57,7 @@ public class EbeanManager {
     }
 
     private EbeanHandler build(JavaPlugin plugin, boolean shared, IHandlerInitializer initializer) {
-        if (shared || plugin.getConfig().getBoolean("dataSource.disabled", false)) {
+        if (shared || !initializer.isEnabled(plugin)) {
             return new EbeanHandler(plugin, true, ORM.getSharedDs());
         }
 
@@ -129,6 +129,11 @@ public class EbeanManager {
             handler.setUrl(url);
             handler.setUser(user);
             handler.setPassword(password);
+        }
+
+        @Override
+        public boolean isEnabled(Plugin plugin) {
+            return !plugin.getConfig().getBoolean("dataSource.disabled", false);
         }
     }
 }
