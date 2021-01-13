@@ -63,10 +63,7 @@ public class ORM extends JavaPlugin {
 
     public static void loadLibrary(JavaPlugin plugin) {
         try {
-            Class<?> loaded = Bukkit.class.getClassLoader().loadClass("com.avaje.ebean.EbeanServer");
-            if (loaded == null) {
-                loadExtLibrary(plugin);
-            }
+            Class.forName("com.avaje.ebean.EbeanServer");
         } catch (ClassNotFoundException e) {
             loadExtLibrary(plugin);
         }
