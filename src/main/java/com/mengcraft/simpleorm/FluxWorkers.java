@@ -41,7 +41,7 @@ public class FluxWorkers implements Executor, Closeable {
 
     public Executor of(String ns) {
         cursor++;
-        return workers.get(ns.hashCode() % size);
+        return workers.get((ns.hashCode() & Integer.MAX_VALUE) % size);
     }
 
     @Override
