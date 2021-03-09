@@ -5,10 +5,16 @@
     <artifactId>simpleorm</artifactId>
     <version>1.4-SNAPSHOT</version>
 
+    <name>SimpleORM</name>
+
     <repositories>
         <repository>
-            <id>i7mc_repository</id>
-            <url>http://repository.i7mc.com:8008/</url>
+            <id>snapshots</id>
+            <url>http://repo.i7mc.com/snapshots</url>
+        </repository>
+        <repository>
+            <id>releases</id>
+            <url>http://repo.i7mc.com/releases</url>
         </repository>
     </repositories>
 
@@ -64,6 +70,7 @@
     </dependencies>
 
     <build>
+        <finalName>${name}</finalName>
         <defaultGoal>clean install</defaultGoal>
         <plugins>
             <plugin>
