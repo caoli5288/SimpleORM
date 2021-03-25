@@ -12,22 +12,23 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FluxWorkers implements Executor, Closeable {
 
     private final ServerWorker serverWorker = new ServerWorker();
     private final int size;
-    private final List<ExecutorService> workers;
-    private int cursor;
+    private final List<ExecutorService> executors;
+    private final AtomicInteger num = new AtomicInteger();
 
     public FluxWorkers(int size) {
         this.size = size;
-        workers = Lists.newArrayListWithCapacity(size);
+        executors = Lists.newArrayListWithCapacity(size);
         ThreadFactory factory = new ThreadFactoryBuilder()
                 .setNameFormat("SimpleORM/FancyWorkers/%s")
                 .build();
         for (int i = 0; i < size; i++) {
-            workers.add(Executors.newSingleThreadExecutor(factory));
+            executors.add(Executors.newSingleThreadExecutor(factory));
         }
     }
 
@@ -40,24 +41,23 @@ public class FluxWorkers implements Executor, Closeable {
     }
 
     public Executor of(String ns) {
-        cursor++;
-        return workers.get((ns.hashCode() & Integer.MAX_VALUE) % size);
+        return executors.get((ns.hashCode() & Integer.MAX_VALUE) % size);
     }
 
     @Override
     public void execute(Runnable command) {
-        workers.get(cursor++ % size).execute(command);
+        executors.get(num.getAndIncrement() % size).execute(command);
     }
 
     @Override
     public void close() {
-        for (ExecutorService service : workers) {
+        for (ExecutorService service : executors) {
             service.shutdown();
         }
     }
 
     public void awaitClose(long mills) throws InterruptedException {
-        for (ExecutorService service : workers) {
+        for (ExecutorService service : executors) {
             Preconditions.checkState(service.awaitTermination(mills, TimeUnit.MILLISECONDS));
         }
     }
