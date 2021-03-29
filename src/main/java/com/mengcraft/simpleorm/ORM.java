@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.LibraryLoader;
 import com.mengcraft.simpleorm.lib.MavenLibrary;
+import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
 import com.mengcraft.simpleorm.provider.IHandlerInitializer;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
@@ -260,18 +261,18 @@ public class ORM extends JavaPlugin {
     }
 
     public static CompletableFuture<Void> enqueue(Runnable runnable) {
-        return CompletableFuture.runAsync(runnable, workers.of());
+        return Utils.enqueue(workers.of(), runnable);
     }
 
     public static CompletableFuture<Void> enqueue(String ns, Runnable runnable) {
-        return CompletableFuture.runAsync(runnable, workers.of(ns));
+        return Utils.enqueue(workers.of(ns), runnable);
     }
 
     public static <T> CompletableFuture<T> enqueue(Supplier<T> supplier) {
-        return CompletableFuture.supplyAsync(supplier, workers.of());
+        return Utils.enqueue(workers.of(), supplier);
     }
 
     public static <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
-        return CompletableFuture.supplyAsync(supplier, workers.of(ns));
+        return Utils.enqueue(workers.of(ns), supplier);
     }
 }

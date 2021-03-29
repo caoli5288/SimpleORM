@@ -1,12 +1,19 @@
 package com.mengcraft.simpleorm.lib;
 
+import com.google.common.io.ByteStreams;
 import lombok.SneakyThrows;
 
 import javax.persistence.Table;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class Utils {
 
@@ -58,5 +65,28 @@ public class Utils {
     @SneakyThrows
     public static void addUrl(URLClassLoader cl, URL url) {
         URL_CLASS_LOADER_addURL.invoke(cl, url);
+    }
+
+    public static <T> CompletableFuture<T> enqueue(Executor executor, Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(supplier, executor);
+    }
+
+    public static CompletableFuture<Void> enqueue(Executor executor, Runnable runnable) {
+        return CompletableFuture.runAsync(runnable, executor);
+    }
+
+    @SneakyThrows
+    public static String toString(InputStream resource) {
+        return new String(ByteStreams.toByteArray(resource), StandardCharsets.UTF_8);
+    }
+
+    public static InputStream getResourceStream(String s) {
+        return Utils.class.getClassLoader().getResourceAsStream(s);
+    }
+
+    public static <T> void let(T obj, Consumer<T> consumer) {
+        if (obj != null) {
+            consumer.accept(obj);
+        }
     }
 }
