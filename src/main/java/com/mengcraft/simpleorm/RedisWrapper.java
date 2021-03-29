@@ -2,12 +2,14 @@ package com.mengcraft.simpleorm;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
 import com.mengcraft.simpleorm.redis.RedisMessageTopic;
 import lombok.Cleanup;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -23,7 +25,9 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -31,11 +35,31 @@ import static com.mengcraft.simpleorm.ORM.nil;
 
 public class RedisWrapper implements Closeable {
 
+    private final Map<String, String> scripts = Maps.newHashMap();
     private final IRedisProvider resources;
     private MessageFilter filter;
 
     public RedisWrapper(IRedisProvider resources) {
         this.resources = resources;
+    }
+
+    public boolean loads(String scriptName, String contents) {
+        if (scripts.containsKey(scriptName)) {
+            return false;
+        }
+        synchronized (scripts) {
+            if (scripts.containsKey(scriptName)) {
+                return false;
+            }
+            scripts.put(scriptName, call(jedis -> jedis.scriptLoad(contents)));
+            return true;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T eval(String scriptName, String... args) {
+        String sha = Objects.requireNonNull(scripts.get(scriptName), "script not found");
+        return (T) call(jedis -> jedis.evalsha(sha, 0, args));
     }
 
     @Override
@@ -100,23 +124,20 @@ public class RedisWrapper implements Closeable {
     }
 
     public void subscribe(String channel, Consumer<byte[]> consumer) {
-        subscribe(channel, consumer, command -> new Thread(command).start());
+        subscribe(channel, consumer, command -> new Thread(command, "REDIS-WRAPPER-SUBSCRIBER").start());
     }
 
-    public synchronized void subscribe(String channel, Consumer<byte[]> consumer, Executor executor) {
+    synchronized void subscribe(String channel, Consumer<byte[]> consumer, Executor executor) {
         if (nil(filter)) {
-            filter = new MessageFilter();
-            Jedis client = resources.getResource();
-            client.subscribe(filter, new byte[0]);// hacked
+            /*
+             * Ugly workaround for jedis async subscribe bug.
+             */
+            filter = new MessageFilter(executor);
             filter.addSubscriber(channel, consumer);
-            executor.execute(() -> {
-                try {
-                    filter.execute();
-                } finally {
-                    client.close();
-                }
-            });
-        } else if (!filter.isSubscribed(channel, consumer)) {
+            filter.execute();
+            return;
+        }
+        if (!filter.isSubscribed(channel, consumer)) {
             filter.addSubscriber(channel, consumer);
         }
     }
@@ -135,12 +156,12 @@ public class RedisWrapper implements Closeable {
             return;
         }
 
-        if (filter.subscribers.removeAll(channel).isEmpty()) {// no op
+        if (filter.consumers.removeAll(channel).isEmpty()) {// no op
             return;
         }
 
         filter.unsubscribe(channel.getBytes(StandardCharsets.UTF_8));
-        if (!filter.subscribers.isEmpty()) {
+        if (!filter.consumers.isEmpty()) {
             return;
         }
 
@@ -152,8 +173,8 @@ public class RedisWrapper implements Closeable {
             return;
         }
 
-        int subscribers = filter.removeSubscriber(channel, consumer);
-        if (subscribers == 0) {
+        filter.removeSubscriber(channel, consumer);
+        if (filter.isEmpty()) {
             filter = null;
         }
     }
@@ -199,29 +220,35 @@ public class RedisWrapper implements Closeable {
         return new RedisLiveObjectBucket(this, bucket);
     }
 
-    private static class MessageFilter extends BinaryJedisPubSub {
+    private static final Method METHOD_PUB_SUB_process = Utils.getAccessibleMethod(BinaryJedisPubSub.class, "process", Client.class);
+    private static final Field FIELD_PUB_SUB_client = Utils.getAccessibleField(BinaryJedisPubSub.class, "client");
 
-        private static final Method METHOD_process = Utils.getAccessibleMethod(BinaryJedisPubSub.class, "process", Client.class);
-        private static final Field FIELD_client = Utils.getAccessibleField(BinaryJedisPubSub.class, "client");
+    @RequiredArgsConstructor
+    class MessageFilter extends BinaryJedisPubSub {
 
-        private final Multimap<String, Consumer<byte[]>> subscribers = HashMultimap.create();
+        private final Multimap<String, Consumer<byte[]>> consumers = HashMultimap.create();
+        private final Executor executor;
+        private final AtomicBoolean exec = new AtomicBoolean();
 
         void addSubscriber(String channel, Consumer<byte[]> consumer) {
-            if (!subscribers.containsKey(channel)) {
+            if (exec.get() && !consumers.containsKey(channel)) {
                 subscribe(channel.getBytes(StandardCharsets.UTF_8));
             }
-            subscribers.put(channel, consumer);
+            consumers.put(channel, consumer);
         }
 
-        int removeSubscriber(String channel, Consumer<byte[]> consumer) {
-            if (subscribers.remove(channel, consumer) && !subscribers.containsKey(channel)) {
+        void removeSubscriber(String channel, Consumer<byte[]> consumer) {
+            if (consumers.remove(channel, consumer) && !consumers.containsKey(channel)) {
                 unsubscribe(channel.getBytes(StandardCharsets.UTF_8));
             }
-            return subscribers.size();
+        }
+
+        boolean isEmpty() {
+            return consumers.isEmpty();
         }
 
         public void onMessage(byte[] channel, byte[] message) {
-            Collection<Consumer<byte[]>> allConsumer = subscribers.get(new String(channel, StandardCharsets.UTF_8));
+            Collection<Consumer<byte[]>> allConsumer = consumers.get(new String(channel, StandardCharsets.UTF_8));
             if (allConsumer.isEmpty()) {
                 return;
             }
@@ -232,22 +259,44 @@ public class RedisWrapper implements Closeable {
         @Override
         @SneakyThrows
         public void proceed(Client client, byte[]... channels) {
-            FIELD_client.set(this, client);
+            FIELD_PUB_SUB_client.set(this, client);
+        }
+
+        void execute() {
+            executor.execute(() -> {
+                while (!consumers.isEmpty()) {
+                    Jedis client = resources.getResource();
+                    client.subscribe(this, new byte[0]);// hacked
+                    // then set this state to true
+                    exec.set(true);
+                    for (String s : consumers.keySet()) {
+                        subscribe(s.getBytes(StandardCharsets.UTF_8));
+                    }
+                    try {
+                        exec();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        exec.set(false);
+                        client.close();
+                    }
+                }
+            });
         }
 
         @SneakyThrows
-        void execute() {
-            Client client = (Client) FIELD_client.get(this);
+        void exec() {
+            Client client = (Client) FIELD_PUB_SUB_client.get(this);
             client.setTimeoutInfinite();
             try {
-                METHOD_process.invoke(this, client);
+                METHOD_PUB_SUB_process.invoke(this, client);
             } finally {
                 client.rollbackTimeout();
             }
         }
 
         public boolean isSubscribed(String channel, Consumer<byte[]> consumer) {
-            return subscribers.containsEntry(channel, consumer);
+            return consumers.containsEntry(channel, consumer);
         }
     }
 
