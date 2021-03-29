@@ -37,7 +37,7 @@ public class FluxWorkers implements Executor, Closeable {
     }
 
     public Executor of() {
-        return this;
+        return executors.get(num.getAndIncrement() % size);
     }
 
     public Executor of(String ns) {
@@ -50,7 +50,7 @@ public class FluxWorkers implements Executor, Closeable {
 
     @Override
     public void execute(Runnable command) {
-        executors.get(num.getAndIncrement() % size).execute(command);
+        of().execute(command);
     }
 
     @Override
