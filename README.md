@@ -119,13 +119,36 @@ class Foo {
             redis.set("my_key", "my_value");
             // more codes here
         });
-        
+
         redisWrapper.subscribe("my_channel", message -> {
             Foo foo = Foo.decode(message);
             // codes here
         });
-        
+
         redisWrapper.publish("my_channel", "my_message");
     }
 }
+```
+
+## Cluster
+
+```groovy
+#!/usr/bin/env groovy
+
+import com.mengcraft.simpleorm.async.ClusterSystem
+
+import java.util.concurrent.CompletableFuture
+import java.util.function.BiConsumer
+
+ClusterSystem.create("sample")// join(or create) named cluster and return its future. 
+        .thenAccept(system -> {
+            system.constructor(self -> {// construct system make it respawn automatic
+                self.spawn("echo", actor -> {
+                    actor.map(String.class, { sender, msg ->
+                        println msg
+                        return msg// just return
+                    })
+                })
+            })
+        })
 ```
