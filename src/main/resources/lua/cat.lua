@@ -1,7 +1,7 @@
 local k = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
 local j = 'sa:' .. ARGV[1] .. ':hb'
 local t = redis.call('TIME')[1] - 20
-while (true) do
+repeat
     local act = redis.call('SRANDMEMBER', k)
     if (not act) then
         return nil
@@ -9,11 +9,13 @@ while (true) do
     local sys = string.sub(act, 0, string.find(act, ':') - 1)
     local _t = redis.call('HGET', j, sys)
     if (not _t) then
-        return nil
+        _t = 0
+    else
+        _t = tonumber(_t)
     end
-    if (tonumber(_t) >= t) then
+    if (_t >= t) then
         return act
     else
         redis.call('SREM', k, act)
     end
-end
+until true

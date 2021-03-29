@@ -5,7 +5,6 @@ import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -92,13 +91,12 @@ public class RedisCluster implements ICluster {
         msg.setSender(caller.getAddress());
         msg.setReceiver(address);
         if (obj != null) {
-            msg.setContents(ORM.json().toJson(obj));
-            msg.setContentsType(obj.getClass().getName());
+            msg.setContents(ORM.json().toJsonTree(obj));
+            msg.setContentType(obj.getClass().getName());
         }
-        ORM.globalRedisWrapper().open(jedis -> {
-            String ch = String.format(PATTERN_CH, cluster, address.substring(0, address.indexOf(':')));
-            jedis.publish(ch.getBytes(StandardCharsets.UTF_8), ORM.json().toJson(msg).getBytes(StandardCharsets.UTF_8));
-        });
+        String ch = String.format(PATTERN_CH, cluster, address.substring(0, address.indexOf(':')));
+        String json = ORM.json().toJson(msg);
+        ORM.globalRedisWrapper().publish(ch, json);
         return msg;
     }
 

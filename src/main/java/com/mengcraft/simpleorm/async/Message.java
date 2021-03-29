@@ -11,9 +11,9 @@ public class Message {
     @SerializedName("b")
     private String receiver;
     @SerializedName("c")
-    private String contents;
+    private Object contents;
     @SerializedName("d")
-    private String contentsType;
+    private String contentType;
 
     /**
      * unsigned int32

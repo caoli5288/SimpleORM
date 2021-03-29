@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm.async;
 
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.lib.Utils;
 import lombok.AccessLevel;
@@ -72,10 +73,8 @@ public class Handler implements Closeable {
         return f;
     }
 
-    @SneakyThrows
     Object receive(Message msg) {
-        Object obj = ORM.json().fromJson(msg.getContents(), Class.forName(msg.getContentsType()));
-        return receive(msg.getSender(), obj);
+        return receive(msg.getSender(), asObject(msg));
     }
 
     Object receive(String sender, Object obj) {
@@ -100,13 +99,17 @@ public class Handler implements Closeable {
         }
     }
 
-    @SneakyThrows
     static void complete(CompletableFuture<Object> f, Message msg) {
-        if (Utils.isNullOrEmpty(msg.getContentsType())) {
+        if (Utils.isNullOrEmpty(msg.getContentType())) {
             f.complete(null);
         } else {
-            Object obj = ORM.json().fromJson(msg.getContents(), Class.forName(msg.getContentsType()));
-            f.complete(obj);
+            f.complete(asObject(msg));
         }
+    }
+
+    @SneakyThrows
+    static Object asObject(Message msg) {
+        Gson json = ORM.json();
+        return json.fromJson(json.toJsonTree(msg.getContents()), Class.forName(msg.getContentType()));
     }
 }
