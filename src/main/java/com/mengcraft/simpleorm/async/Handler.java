@@ -25,21 +25,25 @@ public class Handler implements Closeable {
 
     @Getter(AccessLevel.NONE)
     private final Map<Class<?>, BiFunction<String, Object, Object>> handlers = Maps.newHashMap();
+    @Getter(AccessLevel.NONE)
+    private final Map<String, Handler> children = Maps.newHashMap();
     // const
     @Getter(AccessLevel.NONE)
     final Executor executor;
     private final ClusterSystem system;
+    private final Handler supervisor;
     private final String category;
     private final String address;
-    private boolean open = true;
+    private volatile boolean open = true;
     @Setter(AccessLevel.PACKAGE)
     private Thread context;
     private Consumer<Handler> constructor;
 
-    Handler(ClusterSystem system, String category, String name) {
+    Handler(ClusterSystem system, Handler supervisor, String category) {
         this.system = system;
+        this.supervisor = supervisor;
         this.category = category;
-        address = system.getName() + ':' + name;
+        address = system.getName() + ':' + system.cluster.randomName(system);
         executor = ORM.getWorkers().of();
     }
 
@@ -86,10 +90,11 @@ public class Handler implements Closeable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {// synced self
         if (open) {
             open = false;
             system.close(this);
+            // TODO close children
         }
     }
 
@@ -107,6 +112,15 @@ public class Handler implements Closeable {
 
     void construct() {
         constructor.accept(this);
+    }
+
+    void reset() {
+        // TODO reset by supervisors
+    }
+
+    public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
+        return system.spawn(this, category, constructor)
+                .thenApplyAsync(child -> children.put(child.getAddress(), child), executor);
     }
 
     static void complete(CompletableFuture<Object> f, Message msg) {

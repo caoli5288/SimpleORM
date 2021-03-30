@@ -27,7 +27,7 @@ public class ClusterSystem implements Closeable {
     private final Map<String, Handler> refs = Maps.newHashMap();
     @Getter
     private final String name;
-    private final ICluster cluster;
+    final ICluster cluster;
     final Map<Long, CompletableFuture<Object>> futures = Maps.newConcurrentMap();
     final ScheduledExecutorService executor;
     Consumer<ClusterSystem> constructor;
@@ -75,31 +75,32 @@ public class ClusterSystem implements Closeable {
     /**
      * Call by ICluster while heartbeat fail
      */
-    synchronized void reset() {
+    void reset() {
         if (constructor == null) {
             close();
             return;
         }
         if (open) {
             open = false;
-            doContext(() -> {
-                for (Handler s : refs.values()) {
-                    s.close();
-                }
-                refs.clear();
-                cluster.reset(this);
-                open = true;
-                constructor.accept(this);
-            });
+            // system contexts
+            for (Handler s : refs.values()) {
+                s.close();
+            }
+            refs.clear();
+            cluster.reset(this);
+            open = true;
+            constructor.accept(this);
         }
     }
 
-    void close(Handler worker) {
+    void close(Handler actor) {// called from actor context
         doContext(() -> {
             if (open) {
-                refs.remove(worker.getAddress());
+                refs.remove(actor.getAddress());
             }
-            cluster.close(this, worker);
+            if (actor.getSupervisor() == null) {
+                cluster.close(this, actor);
+            }
         });
     }
 
@@ -157,7 +158,12 @@ public class ClusterSystem implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return Utils.enqueue(executor, () -> new Handler(this, category, cluster.randomName(this)))
+        // TODO split impl spawn system scope handlers
+        return spawn(null, category, constructor);
+    }
+
+    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
+        return Utils.enqueue(executor, () -> new Handler(this, supervisor, category))
                 .thenComposeAsync(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -166,7 +172,9 @@ public class ClusterSystem implements Closeable {
                 }))
                 .thenComposeAsync(actor -> Utils.enqueue(executor, () -> {
                     refs.put(actor.getAddress(), actor);
-                    cluster.spawn(this, actor);
+                    if (actor.getSupervisor() == null) {
+                        cluster.spawn(this, actor);
+                    }
                     return actor;
                 }));
     }
