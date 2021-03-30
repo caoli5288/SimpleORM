@@ -111,7 +111,7 @@ public class ClusterSystem implements Closeable {
                 Object let = receiver.receive(msg);
                 // send ack
                 cluster.send(this, receiver, msg.getSender(), let, msg.getId());
-            }).whenComplete((__, e) -> {
+            }).whenComplete((__, e) -> {// TODO more supervisor options
                 if (e != null) {
                     e.printStackTrace();
                 }
@@ -119,7 +119,7 @@ public class ClusterSystem implements Closeable {
         } else {
             CompletableFuture<Object> f = futures.remove(fid);
             Utils.enqueue(receiver.executor, () -> Handler.complete(f, msg))
-                    .whenComplete((__, e) -> {
+                    .whenComplete((__, e) -> {// TODO more supervisor options
                         if (e != null) {
                             e.printStackTrace();
                         }
@@ -160,7 +160,8 @@ public class ClusterSystem implements Closeable {
         return Utils.enqueue(executor, () -> new Handler(this, category, cluster.randomName(this)))
                 .thenComposeAsync(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
-                    constructor.accept(actor);
+                    actor.setConstructor(constructor);
+                    actor.construct();
                     return actor;
                 }))
                 .thenComposeAsync(actor -> Utils.enqueue(executor, () -> {

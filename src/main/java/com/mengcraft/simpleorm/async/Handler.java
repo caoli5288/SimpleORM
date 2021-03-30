@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import static java.lang.Thread.currentThread;
 
@@ -33,6 +34,7 @@ public class Handler implements Closeable {
     private boolean open = true;
     @Setter(AccessLevel.PACKAGE)
     private Thread context;
+    private Consumer<Handler> constructor;
 
     Handler(ClusterSystem system, String category, String name) {
         this.system = system;
@@ -97,6 +99,14 @@ public class Handler implements Closeable {
         } else {
             Utils.enqueue(executor, commands);
         }
+    }
+
+    void setConstructor(Consumer<Handler> constructor) {
+        this.constructor = constructor;
+    }
+
+    void construct() {
+        constructor.accept(this);
     }
 
     static void complete(CompletableFuture<Object> f, Message msg) {
