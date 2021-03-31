@@ -39,11 +39,11 @@ public class Handler implements Closeable {
     private Thread context;
     private Consumer<Handler> constructor;
 
-    Handler(ClusterSystem system, Handler supervisor, String category) {
+    Handler(ClusterSystem system, Handler supervisor, String category, String address) {
         this.system = system;
         this.supervisor = supervisor;
         this.category = category;
-        address = system.getName() + ':' + system.cluster.randomName(system);
+        this.address = address;
         executor = ORM.getWorkers().of();
     }
 

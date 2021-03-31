@@ -167,12 +167,7 @@ public class ClusterSystem implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        // TODO split impl spawn system scope handlers
-        return spawn(null, category, constructor);
-    }
-
-    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
-        return Utils.enqueue(executor, () -> new Handler(this, supervisor, category))
+        return Utils.enqueue(executor, () -> ref(null, category))
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -180,12 +175,27 @@ public class ClusterSystem implements Closeable {
                     return actor;
                 }))
                 .thenCompose(actor -> Utils.enqueue(executor, () -> {
-                    refs.put(actor.getAddress(), actor);
-                    if (actor.getSupervisor() == null) {
-                        cluster.spawn(this, actor);
-                    }
+                    cluster.spawn(this, actor);
                     return actor;
                 }));
+    }
+
+    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
+        return Utils.enqueue(executor, () -> ref(supervisor, category))
+                .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
+                    actor.setContext(currentThread());
+                    actor.setConstructor(constructor);
+                    actor.construct();
+                    return actor;
+                }));
+    }
+
+    private Handler ref(Handler supervisor, String category) {
+        // ask next random name from cluster instance
+        String address = name + ':' + cluster.randomName(this);
+        Handler ref = new Handler(this, supervisor, category, address);
+        refs.put(ref.getAddress(), ref);
+        return ref;
     }
 
     private void doContext(Runnable commands) {
