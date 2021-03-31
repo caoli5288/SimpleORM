@@ -4,10 +4,12 @@ import com.google.common.annotations.Beta;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.lib.Utils;
 import lombok.Getter;
 
 import java.io.Closeable;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -104,6 +106,13 @@ public class ClusterSystem implements Closeable {
         });
     }
 
+    void receive(byte[] bytes) {
+        doContext(() -> {
+            Message msg = ORM.json().fromJson(new String(bytes, StandardCharsets.UTF_8), Message.class);
+            receive(msg);
+        });
+    }
+
     void receive(Message msg) {
         Handler receiver = refs.get(msg.getReceiver());
         long fid = msg.getFutureId();
@@ -164,13 +173,13 @@ public class ClusterSystem implements Closeable {
 
     CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
         return Utils.enqueue(executor, () -> new Handler(this, supervisor, category))
-                .thenComposeAsync(actor -> Utils.enqueue(actor.executor, () -> {
+                .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
                     actor.construct();
                     return actor;
                 }))
-                .thenComposeAsync(actor -> Utils.enqueue(executor, () -> {
+                .thenCompose(actor -> Utils.enqueue(executor, () -> {
                     refs.put(actor.getAddress(), actor);
                     if (actor.getSupervisor() == null) {
                         cluster.spawn(this, actor);

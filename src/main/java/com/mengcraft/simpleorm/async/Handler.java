@@ -26,7 +26,7 @@ public class Handler implements Closeable {
     @Getter(AccessLevel.NONE)
     private final Map<Class<?>, BiFunction<String, Object, Object>> handlers = Maps.newHashMap();
     @Getter(AccessLevel.NONE)
-    private final Map<String, Handler> children = Maps.newHashMap();
+    private final Map<String, Handler> children = Maps.newConcurrentMap();
     // const
     @Getter(AccessLevel.NONE)
     final Executor executor;
@@ -93,8 +93,20 @@ public class Handler implements Closeable {
     public synchronized void close() {// synced self
         if (open) {
             open = false;
+            if (supervisor != null) {
+                supervisor.close(this);
+            }
+            for (Handler child : children.values()) {
+                child.close();
+            }
+            children.clear();
             system.close(this);
-            // TODO close children
+        }
+    }
+
+    private void close(Handler child) {
+        if (open) {
+            children.remove(child.getAddress());// subs
         }
     }
 
@@ -120,7 +132,10 @@ public class Handler implements Closeable {
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
         return system.spawn(this, category, constructor)
-                .thenApplyAsync(child -> children.put(child.getAddress(), child), executor);
+                .thenApply(child -> {
+                    children.put(child.getAddress(), child);
+                    return child;
+                });
     }
 
     static void complete(CompletableFuture<Object> f, Message msg) {
