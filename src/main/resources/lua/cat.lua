@@ -1,7 +1,7 @@
 local k = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
 local j = 'sa:' .. ARGV[1] .. ':hb'
 local t = redis.call('TIME')[1] - 20
-repeat
+while true do
     local act = redis.call('SRANDMEMBER', k)
     if (not act) then
         return nil
@@ -18,4 +18,4 @@ repeat
     else
         redis.call('SREM', k, act)
     end
-until true
+end

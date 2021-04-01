@@ -6,6 +6,7 @@ import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.lib.Utils;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.SneakyThrows;
 
@@ -38,6 +39,7 @@ public class Handler implements Closeable {
     @Setter(AccessLevel.PACKAGE)
     private Thread context;
     private Consumer<Handler> constructor;
+    private BiConsumer<Handler, Throwable> exceptionally;
 
     Handler(ClusterSystem system, Handler supervisor, String category, String address) {
         this.system = system;
@@ -64,6 +66,26 @@ public class Handler implements Closeable {
         CompletableFuture<Object> f = new CompletableFuture<>();
         doContext(() -> system.send(this, receiver, msg, f));
         return f;
+    }
+
+    public void fails(Throwable e) {
+        fails(this, e);
+    }
+
+    void fails(Handler ref, @NonNull Throwable e) {
+        if (exceptionally != null) {
+            doContext(() -> exceptionally.accept(ref, e));
+            return;
+        }
+        if (supervisor != null) {
+            supervisor.fails(ref, e);
+            return;
+        }
+        system.fails(ref, e);
+    }
+
+    public void exceptionally(BiConsumer<Handler, Throwable> exceptionally) {
+        this.exceptionally = exceptionally;
     }
 
     public CompletableFuture<Object> receive(Object msg) {

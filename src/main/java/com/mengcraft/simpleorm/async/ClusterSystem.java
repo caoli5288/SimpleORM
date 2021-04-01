@@ -19,6 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static java.lang.Thread.currentThread;
@@ -34,6 +35,7 @@ public class ClusterSystem implements Closeable {
     final ScheduledExecutorService executor;
     Consumer<ClusterSystem> constructor;
     private Thread context;
+    private BiConsumer<Handler, Throwable> exceptionally;
     @Getter
     private volatile boolean open;
 
@@ -45,6 +47,19 @@ public class ClusterSystem implements Closeable {
         executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
                 .setNameFormat("ClusterSystem/" + clusterName + "/" + name)
                 .build());
+    }
+
+    /**
+     * Call by none-supervisor handler
+     */
+    void fails(Handler ref, Throwable e) {
+        if (exceptionally != null) {
+            exceptionally.accept(ref, e);
+        }
+    }
+
+    public void exceptionally(BiConsumer<Handler, Throwable> exceptionally) {
+        this.exceptionally = exceptionally;
     }
 
     public void constructor(Consumer<ClusterSystem> constructor) {
@@ -121,17 +136,17 @@ public class ClusterSystem implements Closeable {
                 Object let = receiver.receive(msg);
                 // send ack
                 cluster.send(this, receiver, msg.getSender(), let, msg.getId());
-            }).whenComplete((__, e) -> {// TODO more supervisor options
+            }).whenComplete((__, e) -> {
                 if (e != null) {
-                    e.printStackTrace();
+                    receiver.fails(e);
                 }
             });
         } else {
             CompletableFuture<Object> f = futures.remove(fid);
             Utils.enqueue(receiver.executor, () -> Handler.complete(f, msg))
-                    .whenComplete((__, e) -> {// TODO more supervisor options
+                    .whenComplete((__, e) -> {
                         if (e != null) {
-                            e.printStackTrace();
+                            receiver.fails(e);
                         }
                     });
         }
@@ -141,10 +156,11 @@ public class ClusterSystem implements Closeable {
         if (refs.containsKey(receiver)) {
             Handler actor = refs.get(receiver);
             Utils.enqueue(actor.executor, () -> actor.receive(caller.getAddress(), obj))
-                    .whenComplete((_obj, e) -> {
+                    .whenComplete((results, e) -> {
                         if (e == null) {
-                            f.complete(_obj);
+                            f.complete(results);
                         } else {
+                            actor.fails(e);// trigger receiver first
                             f.completeExceptionally(e);
                         }
                     });
