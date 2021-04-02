@@ -153,11 +153,14 @@ public class Handler implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return system.spawn(this, category, constructor)
-                .thenApply(child -> {
-                    children.put(child.getAddress(), child);
-                    return child;
-                });
+        return system.spawn(this, category, constructor);
+    }
+
+    /**
+     * Called in child context
+     */
+    void addChild(Handler ref) {
+        children.put(ref.getAddress(), ref);
     }
 
     static void complete(CompletableFuture<Object> f, Message msg) {

@@ -1,6 +1,6 @@
 package com.mengcraft.simpleorm.async;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
@@ -113,23 +113,24 @@ public class RedisCluster implements ICluster {
 
     @Override
     public List<String> query(ClusterSystem system, Selector selector) {
-        List<String> results = Lists.newArrayList();
         switch (selector.getOps()) {
             case ONE:
-                results.add(ORM.globalRedisWrapper().eval(SCRIPT_CAT, cluster, selector.getCategory()));
-                break;
+                String one = ORM.globalRedisWrapper().eval(SCRIPT_CAT, cluster, selector.getCategory());
+                if (Utils.isNullOrEmpty(one)) {
+                    return ImmutableList.of();
+                }
+                return ImmutableList.of(one);
             case MANY:
-                results.addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_MULTI,
+                return ORM.globalRedisWrapper().eval(SCRIPT_CAT_MULTI,
                         cluster,
                         selector.getCategory(),
-                        String.valueOf(selector.getCount())));
-                break;
+                        String.valueOf(selector.getCount()));
             case ALL:
-                results.addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_ALL,
+                return ORM.globalRedisWrapper().eval(SCRIPT_CAT_ALL,
                         cluster,
-                        selector.getCategory()));
-                break;
+                        selector.getCategory());
+            default:
+                throw new IllegalArgumentException("unknown query selector ops");
         }
-        return results;
     }
 }

@@ -49,6 +49,10 @@ public class ClusterSystem implements Closeable {
                 .build());
     }
 
+    public ScheduledExecutorService scheduler() {
+        return executor;
+    }
+
     /**
      * Call by none-supervisor handler
      */
@@ -202,6 +206,7 @@ public class ClusterSystem implements Closeable {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
                     actor.construct();
+                    actor.getSupervisor().addChild(actor);
                     return actor;
                 }));
     }
