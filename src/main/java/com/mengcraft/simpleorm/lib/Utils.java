@@ -12,6 +12,8 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -88,5 +90,13 @@ public class Utils {
         if (obj != null) {
             consumer.accept(obj);
         }
+    }
+
+    public static <T> CompletableFuture<T> orTimeout(CompletableFuture<T> f, ScheduledExecutorService executor, long t, TimeUnit unit) {
+        return f.whenComplete(new Canceller(executor.schedule(new Timeout(f), t, unit)));
+    }
+
+    public static <T> CompletableFuture<T> future() {
+        return new CompletableFuture<>();
     }
 }

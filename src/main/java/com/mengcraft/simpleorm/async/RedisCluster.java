@@ -6,6 +6,7 @@ import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -84,7 +85,7 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public Message send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
+    public CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
         Message msg = new Message();
         msg.setId(Integer.toUnsignedLong(mid.getAndIncrement()));
         msg.setFutureId(fid);
@@ -96,8 +97,11 @@ public class RedisCluster implements ICluster {
         }
         String ch = String.format(PATTERN_CH, cluster, address.substring(0, address.indexOf(':')));
         String json = ORM.json().toJson(msg);
-        ORM.globalRedisWrapper().publish(ch, json);
-        return msg;
+        // Use system FJPs for pure IO tasks.
+        return CompletableFuture.supplyAsync(() -> {
+            ORM.globalRedisWrapper().publish(ch, json);
+            return msg;
+        });
     }
 
     @Override

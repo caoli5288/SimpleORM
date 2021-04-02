@@ -63,9 +63,7 @@ public class Handler implements Closeable {
     }
 
     public CompletableFuture<Object> sendMessage(String receiver, Object msg) {
-        CompletableFuture<Object> f = new CompletableFuture<>();
-        doContext(() -> system.send(this, receiver, msg, f));
-        return f;
+        return system.send(this, receiver, msg);
     }
 
     public void fails(Throwable e) {
@@ -89,16 +87,7 @@ public class Handler implements Closeable {
     }
 
     public CompletableFuture<Object> receive(Object msg) {
-        CompletableFuture<Object> f = new CompletableFuture<>();
-        doContext(() -> {
-            try {
-                Object ret = receive(address, msg);
-                f.complete(ret);
-            } catch (Exception e) {
-                f.completeExceptionally(e);
-            }
-        });
-        return f;
+        return Utils.enqueue(executor, () -> receive(address, msg));
     }
 
     Object receive(Message msg) {

@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm.async;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface ICluster {
 
@@ -12,7 +13,7 @@ public interface ICluster {
 
     void close(ClusterSystem system, Handler actor);
 
-    Message send(ClusterSystem system, Handler caller, String address, Object obj, long fid);
+    CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid);
 
     void spawn(ClusterSystem system, Handler actor);
 

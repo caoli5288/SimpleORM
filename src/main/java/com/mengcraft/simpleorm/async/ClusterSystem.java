@@ -14,11 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -31,7 +29,7 @@ public class ClusterSystem implements Closeable {
     @Getter
     private final String name;
     final ICluster cluster;
-    final Map<Long, CompletableFuture<Object>> futures = Maps.newConcurrentMap();
+    final Map<Long, CompletableFuture<Object>> callbacks = Maps.newConcurrentMap();
     final ScheduledExecutorService executor;
     Consumer<ClusterSystem> constructor;
     private Thread context;
@@ -135,7 +133,7 @@ public class ClusterSystem implements Closeable {
     void receive(Message msg) {
         Handler receiver = refs.get(msg.getReceiver());
         long fid = msg.getFutureId();
-        if (fid == -1 || !futures.containsKey(fid)) {
+        if (fid == -1) {
             Utils.enqueue(receiver.executor, () -> {
                 Object let = receiver.receive(msg);
                 // send ack
@@ -145,8 +143,8 @@ public class ClusterSystem implements Closeable {
                     receiver.fails(e);
                 }
             });
-        } else {
-            CompletableFuture<Object> f = futures.remove(fid);
+        } else if (callbacks.containsKey(fid)) {
+            CompletableFuture<Object> f = callbacks.remove(fid);
             Utils.enqueue(receiver.executor, () -> Handler.complete(f, msg))
                     .whenComplete((__, e) -> {
                         if (e != null) {
@@ -154,36 +152,24 @@ public class ClusterSystem implements Closeable {
                         }
                     });
         }
+        // TODO handle un-ack msg
     }
 
-    void send(Handler caller, String receiver, Object obj, CompletableFuture<Object> f) {
+    CompletableFuture<Object> send(Handler caller, String receiver, Object obj) {
         if (refs.containsKey(receiver)) {
             Handler actor = refs.get(receiver);
-            Utils.enqueue(actor.executor, () -> actor.receive(caller.getAddress(), obj))
-                    .whenComplete((results, e) -> {
-                        if (e == null) {
-                            f.complete(results);
-                        } else {
-                            actor.fails(e);// trigger receiver first
-                            f.completeExceptionally(e);
-                        }
-                    });
-        } else {
-            Message msg = cluster.send(this, caller, receiver, obj, -1);
-            futures.put(msg.getId(), f);
-            // ugly codes here. no native Future.orTimeout in jdk8
-            Future<?> sf = executor.schedule(expire(msg.getId()), 4, TimeUnit.SECONDS);
-            f.thenRun(() -> sf.cancel(false));
+            return Utils.enqueue(actor.executor, () -> actor.receive(caller.getAddress(), obj));
         }
-    }
-
-    private Runnable expire(long fid) {
-        return () -> {
-            CompletableFuture<?> f = futures.remove(fid);
-            if (f != null) {
-                f.completeExceptionally(new TimeoutException());
-            }
-        };
+        return cluster.send(this, caller, receiver, obj, -1)
+                .thenCompose(msg -> {
+                    CompletableFuture<Object> f = Utils.orTimeout(Utils.future(), executor, 4, TimeUnit.SECONDS)
+                            .whenComplete((__, e) -> {
+                                if (e != null)
+                                    callbacks.remove(msg.getId());
+                            });
+                    callbacks.put(msg.getId(), f);
+                    return f;
+                });
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {

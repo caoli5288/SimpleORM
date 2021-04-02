@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
@@ -34,7 +35,7 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public Message send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
+    public CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
         return null;
     }
 
