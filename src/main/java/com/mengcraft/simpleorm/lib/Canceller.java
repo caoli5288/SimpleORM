@@ -14,7 +14,7 @@ public class Canceller implements BiConsumer<Object, Throwable> {
     }
 
     public void accept(Object __, Throwable e) {
-        if (!f.isDone())
+        if (e == null && !f.isDone())
             f.cancel(false);
     }
 }
