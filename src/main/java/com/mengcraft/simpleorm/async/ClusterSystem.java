@@ -213,7 +213,7 @@ public class ClusterSystem implements Closeable {
         }
     }
 
-    public List<String> query(Selector selector) {
+    public CompletableFuture<Selector> query(Selector selector) {
         return cluster.query(this, selector);
     }
 

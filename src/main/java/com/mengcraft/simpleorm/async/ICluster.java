@@ -1,6 +1,5 @@
 package com.mengcraft.simpleorm.async;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface ICluster {
@@ -19,5 +18,5 @@ public interface ICluster {
 
     String randomName(ClusterSystem system);
 
-    List<String> query(ClusterSystem system, Selector selector);
+    CompletableFuture<Selector> query(ClusterSystem system, Selector selector);
 }

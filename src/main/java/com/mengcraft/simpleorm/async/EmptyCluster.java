@@ -1,7 +1,6 @@
 package com.mengcraft.simpleorm.async;
 
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 
 import java.util.List;
@@ -40,20 +39,19 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public List<String> query(ClusterSystem system, Selector selector) {
-        List<String> results = Lists.newArrayList();
+    public CompletableFuture<Selector> query(ClusterSystem system, Selector selector) {
         switch (selector.getOps()) {
             case ONE:
-                results.add(query(selector.getCategory()));
+                selector.getResults().add(query(selector.getCategory()));
                 break;
             case MANY:
-                query(selector.getCategory(), selector.getCount(), results::add);
+                query(selector.getCategory(), selector.getCount(), s -> selector.getResults().add(s));
                 break;
             case ALL:
-                results.addAll(refs.get(selector.getCategory()));
+                selector.getResults().addAll(refs.get(selector.getCategory()));
                 break;
         }
-        return results;
+        return CompletableFuture.completedFuture(selector);
     }
 
     private String query(String category) {

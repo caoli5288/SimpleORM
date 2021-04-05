@@ -1,11 +1,9 @@
 package com.mengcraft.simpleorm.async;
 
-import com.google.common.collect.ImmutableList;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -116,25 +114,28 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public List<String> query(ClusterSystem system, Selector selector) {
-        switch (selector.getOps()) {
-            case ONE:
-                String one = ORM.globalRedisWrapper().eval(SCRIPT_CAT, cluster, selector.getCategory());
-                if (Utils.isNullOrEmpty(one)) {
-                    return ImmutableList.of();
-                }
-                return ImmutableList.of(one);
-            case MANY:
-                return ORM.globalRedisWrapper().eval(SCRIPT_CAT_MULTI,
-                        cluster,
-                        selector.getCategory(),
-                        String.valueOf(selector.getCount()));
-            case ALL:
-                return ORM.globalRedisWrapper().eval(SCRIPT_CAT_ALL,
-                        cluster,
-                        selector.getCategory());
-            default:
-                throw new IllegalArgumentException("unknown query selector ops");
-        }
+    public CompletableFuture<Selector> query(ClusterSystem system, Selector selector) {
+        return CompletableFuture.supplyAsync(() -> {
+            switch (selector.getOps()) {
+                case ONE:
+                    String s = ORM.globalRedisWrapper().eval(SCRIPT_CAT, cluster, selector.getCategory());
+                    if (!Utils.isNullOrEmpty(s)) {
+                        selector.getResults().add(s);
+                    }
+                    break;
+                case MANY:
+                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_MULTI,
+                            cluster,
+                            selector.getCategory(),
+                            String.valueOf(selector.getCount())));
+                    break;
+                case ALL:
+                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_ALL,
+                            cluster,
+                            selector.getCategory()));
+                    break;
+            }
+            return selector;
+        });
     }
 }
