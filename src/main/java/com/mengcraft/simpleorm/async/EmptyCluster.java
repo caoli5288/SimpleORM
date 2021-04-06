@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm.async;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import com.mengcraft.simpleorm.lib.Utils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -71,12 +72,15 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public String randomName(ClusterSystem system) {
-        return Long.toHexString(number++);
+    public CompletableFuture<String> randomName(ClusterSystem system) {
+        return Utils.enqueue(system.executor, () -> Long.toHexString(number++));
     }
 
     @Override
-    public void spawn(ClusterSystem system, Handler actor) {
-        refs.put(actor.getCategory(), actor.getAddress());
+    public CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor) {
+        return Utils.enqueue(system.executor, () -> {
+            refs.put(actor.getCategory(), actor.getAddress());
+            return actor;
+        });
     }
 }

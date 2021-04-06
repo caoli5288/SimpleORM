@@ -103,14 +103,17 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public String randomName(ClusterSystem system) {
-        long call = ORM.globalRedisWrapper().call(jedis -> jedis.incr(String.format(PATTERN_REFS, cluster)));
-        return Long.toHexString(call);
+    public CompletableFuture<String> randomName(ClusterSystem system) {
+        return CompletableFuture.supplyAsync(() ->
+                Long.toHexString(ORM.globalRedisWrapper().call(jedis -> jedis.incr(String.format(PATTERN_REFS, cluster)))));
     }
 
     @Override
-    public void spawn(ClusterSystem system, Handler actor) {
-        ORM.globalRedisWrapper().open(jedis -> jedis.sadd(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+    public CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor) {
+        return CompletableFuture.supplyAsync(() -> {
+            ORM.globalRedisWrapper().open(jedis -> jedis.sadd(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+            return actor;
+        });
     }
 
     @Override

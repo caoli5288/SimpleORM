@@ -10,7 +10,6 @@ import lombok.Getter;
 
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -25,7 +24,7 @@ import static java.lang.Thread.currentThread;
 @Beta
 public class ClusterSystem implements Closeable {
 
-    private final Map<String, Handler> refs = Maps.newHashMap();
+    private final Map<String, Handler> refs = Maps.newConcurrentMap();
     @Getter
     private final String name;
     final ICluster cluster;
@@ -173,21 +172,18 @@ public class ClusterSystem implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return Utils.enqueue(executor, () -> ref(null, category))
+        return ref(null, category)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
                     actor.construct();
                     return actor;
                 }))
-                .thenCompose(actor -> Utils.enqueue(executor, () -> {
-                    cluster.spawn(this, actor);
-                    return actor;
-                }));
+                .thenCompose(actor -> cluster.spawn(this, actor));
     }
 
     CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
-        return Utils.enqueue(executor, () -> ref(supervisor, category))
+        return ref(supervisor, category)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -197,12 +193,15 @@ public class ClusterSystem implements Closeable {
                 }));
     }
 
-    private Handler ref(Handler supervisor, String category) {
+    private CompletableFuture<Handler> ref(Handler supervisor, String category) {
         // ask next random name from cluster instance
-        String address = name + ':' + cluster.randomName(this);
-        Handler ref = new Handler(this, supervisor, category, address);
-        refs.put(ref.getAddress(), ref);
-        return ref;
+        return cluster.randomName(this)
+                .thenApply(s -> {
+                    String address = name + ':' + s;
+                    Handler ref = new Handler(this, supervisor, category, address);
+                    refs.put(ref.getAddress(), ref);
+                    return ref;
+                });
     }
 
     private void doContext(Runnable commands) {

@@ -14,9 +14,9 @@ public interface ICluster {
 
     CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid);
 
-    void spawn(ClusterSystem system, Handler actor);
+    CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor);
 
-    String randomName(ClusterSystem system);
+    CompletableFuture<String> randomName(ClusterSystem system);
 
     CompletableFuture<Selector> query(ClusterSystem system, Selector selector);
 }
