@@ -41,13 +41,12 @@ public class RedisCluster implements ICluster {
 
     @Override
     public void setup(ClusterSystem system) {
-        Utils.let(ORM.globalRedisWrapper(), redis -> {
-            redis.loads(SCRIPT_CAT, Utils.toString(Utils.getResourceStream("lua/cat.lua")));
-            redis.loads(SCRIPT_CAT_MULTI, Utils.toString(Utils.getResourceStream("lua/multicat.lua")));
-            redis.loads(SCRIPT_CAT_ALL, Utils.toString(Utils.getResourceStream("lua/catall.lua")));
-            redis.loads(SCRIPT_HEARTBEAT, Utils.toString(Utils.getResourceStream("lua/heartbeat.lua")));
-            redis.subscribe(String.format(PATTERN_CH, cluster, system.getName()), new MessageBus(system));
-        });
+        RedisWrapper redis = ORM.globalRedisWrapper();
+        redis.loads(SCRIPT_CAT, Utils.toString(Utils.getResourceStream("lua/cat.lua")));
+        redis.loads(SCRIPT_CAT_MULTI, Utils.toString(Utils.getResourceStream("lua/multicat.lua")));
+        redis.loads(SCRIPT_CAT_ALL, Utils.toString(Utils.getResourceStream("lua/catall.lua")));
+        redis.loads(SCRIPT_HEARTBEAT, Utils.toString(Utils.getResourceStream("lua/heartbeat.lua")));
+        redis.subscribe(String.format(PATTERN_CH, cluster, system.getName()), new MessageBus(system));
         reset(system);
         // close automatic when system close(due to executor close)
         system.executor.scheduleAtFixedRate(heartbeat(system), 8, 8, TimeUnit.SECONDS);
@@ -56,14 +55,14 @@ public class RedisCluster implements ICluster {
     @Override
     public void reset(ClusterSystem system) {
         // force set heartbeat time
-        ORM.globalRedisWrapper().open(jedis -> jedis.hset(String.format(PATTERN_HEARTBEAT, cluster),
+        ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(), jedis -> jedis.hset(String.format(PATTERN_HEARTBEAT, cluster),
                 system.getName(),
                 String.valueOf(System.currentTimeMillis() / 1000)));
     }
 
     private Runnable heartbeat(ClusterSystem system) {
         return () -> {
-            Number ret = ORM.globalRedisWrapper().eval(SCRIPT_HEARTBEAT, cluster, system.getName());
+            Number ret = ORM.globalRedisWrapper().eval(system.getOptions().getRedisDb(), SCRIPT_HEARTBEAT, cluster, system.getName());
             if (ret.intValue() != 1) {
                 system.reset();
             }
@@ -73,13 +72,15 @@ public class RedisCluster implements ICluster {
     @Override
     public void close(ClusterSystem system) {
         RedisWrapper redis = ORM.globalRedisWrapper();
-        redis.open(jedis -> jedis.hdel(String.format(PATTERN_HEARTBEAT, cluster), system.getName()));
+        redis.open(system.getOptions().getRedisDb(), jedis ->
+                jedis.hdel(String.format(PATTERN_HEARTBEAT, cluster), system.getName()));
         redis.unsubscribe(String.format(PATTERN_CH, cluster, system.getName()));
     }
 
     @Override
     public void close(ClusterSystem system, Handler actor) {
-        ORM.globalRedisWrapper().open(jedis -> jedis.srem(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+        ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(),
+                jedis -> jedis.srem(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
     }
 
     @Override
@@ -104,14 +105,15 @@ public class RedisCluster implements ICluster {
 
     @Override
     public CompletableFuture<String> randomName(ClusterSystem system) {
-        return CompletableFuture.supplyAsync(() ->
-                Long.toHexString(ORM.globalRedisWrapper().call(jedis -> jedis.incr(String.format(PATTERN_REFS, cluster)))));
+        return CompletableFuture.supplyAsync(() -> Long.toHexString(ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(),
+                jedis -> jedis.incr(String.format(PATTERN_REFS, cluster)))));
     }
 
     @Override
     public CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor) {
         return CompletableFuture.supplyAsync(() -> {
-            ORM.globalRedisWrapper().open(jedis -> jedis.sadd(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+            ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(),
+                    jedis -> jedis.sadd(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
             return actor;
         });
     }
@@ -119,21 +121,22 @@ public class RedisCluster implements ICluster {
     @Override
     public CompletableFuture<Selector> query(ClusterSystem system, Selector selector) {
         return CompletableFuture.supplyAsync(() -> {
+            int db = system.getOptions().getRedisDb();
             switch (selector.getOps()) {
                 case ONE:
-                    String s = ORM.globalRedisWrapper().eval(SCRIPT_CAT, cluster, selector.getCategory());
+                    String s = ORM.globalRedisWrapper().eval(db, SCRIPT_CAT, cluster, selector.getCategory());
                     if (!Utils.isNullOrEmpty(s)) {
                         selector.getResults().add(s);
                     }
                     break;
                 case MANY:
-                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_MULTI,
+                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(db, SCRIPT_CAT_MULTI,
                             cluster,
                             selector.getCategory(),
                             String.valueOf(selector.getCount())));
                     break;
                 case ALL:
-                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(SCRIPT_CAT_ALL,
+                    selector.getResults().addAll(ORM.globalRedisWrapper().eval(db, SCRIPT_CAT_ALL,
                             cluster,
                             selector.getCategory()));
                     break;

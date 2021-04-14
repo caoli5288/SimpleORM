@@ -142,7 +142,11 @@ public class Handler implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return system.spawn(this, category, constructor);
+        return spawn(category, constructor, false);
+    }
+
+    public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor, boolean expose) {
+        return system.spawn(this, category, constructor, expose);
     }
 
     /**

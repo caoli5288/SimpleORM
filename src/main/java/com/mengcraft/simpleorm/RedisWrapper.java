@@ -56,10 +56,15 @@ public class RedisWrapper implements Closeable {
         }
     }
 
-    @SuppressWarnings("unchecked")
+
     public <T> T eval(String scriptName, String... args) {
+        return eval(0, scriptName, args);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T eval(int database, String scriptName, String... args) {
         String sha = Objects.requireNonNull(scripts.get(scriptName), "script not found");
-        return (T) call(jedis -> jedis.evalsha(sha, 0, args));
+        return (T) call(database, jedis -> jedis.evalsha(sha, 0, args));
     }
 
     @Override

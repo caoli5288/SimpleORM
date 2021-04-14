@@ -27,6 +27,8 @@ public class ClusterSystem implements Closeable {
     private final Map<String, Handler> refs = Maps.newConcurrentMap();
     @Getter
     private final String name;
+    @Getter
+    private final ClusterOptions options;
     final ICluster cluster;
     final Map<Long, CompletableFuture<Object>> callbacks = Maps.newConcurrentMap();
     final ScheduledExecutorService executor;
@@ -36,8 +38,9 @@ public class ClusterSystem implements Closeable {
     @Getter
     private volatile boolean open;
 
-    ClusterSystem(String clusterName, String name) {
+    ClusterSystem(String clusterName, String name, ClusterOptions options) {
         this.name = name;
+        this.options = options;
         cluster = Utils.isNullOrEmpty(clusterName)
                 ? new EmptyCluster()
                 : new RedisCluster(clusterName);
@@ -182,8 +185,8 @@ public class ClusterSystem implements Closeable {
                 .thenCompose(actor -> cluster.spawn(this, actor));
     }
 
-    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor) {
-        return ref(supervisor, category)
+    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor, boolean expose) {
+        CompletableFuture<Handler> f = ref(supervisor, category)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -191,6 +194,10 @@ public class ClusterSystem implements Closeable {
                     actor.getSupervisor().addChild(actor);
                     return actor;
                 }));
+        if (expose) {
+            return f.thenCompose(actor -> cluster.spawn(this, actor));
+        }
+        return f;
     }
 
     private CompletableFuture<Handler> ref(Handler supervisor, String category) {
@@ -217,8 +224,12 @@ public class ClusterSystem implements Closeable {
     }
 
     public static CompletableFuture<ClusterSystem> create(String cluster, String name) {
+        return create(cluster, name, ClusterOptions.builder().build());
+    }
+
+    public static CompletableFuture<ClusterSystem> create(String cluster, String name, ClusterOptions options) {
         Preconditions.checkArgument(!Utils.isNullOrEmpty(name), "name cannot be empty");
-        ClusterSystem system = new ClusterSystem(cluster, name);
+        ClusterSystem system = new ClusterSystem(cluster, name, options);
         return Utils.enqueue(system.executor, () -> {
             system.setup();
             return system;
@@ -230,6 +241,6 @@ public class ClusterSystem implements Closeable {
     }
 
     public static CompletableFuture<ClusterSystem> create(String cluster) {
-        return create(cluster, Long.toHexString(ThreadLocalRandom.current().nextLong()));
+        return create(cluster, Long.toHexString(ThreadLocalRandom.current().nextLong()), ClusterOptions.builder().build());
     }
 }
