@@ -35,17 +35,19 @@ public class Handler implements Closeable {
     private final Handler supervisor;
     private final String category;
     private final String address;
+    final boolean exposed;
     private volatile boolean open = true;
     @Setter(AccessLevel.PACKAGE)
     private Thread context;
     private Consumer<Handler> constructor;
     private BiConsumer<Handler, Throwable> exceptionally;
 
-    Handler(ClusterSystem system, Handler supervisor, String category, String address) {
+    Handler(ClusterSystem system, Handler supervisor, String category, String address, boolean exposed) {
         this.system = system;
         this.supervisor = supervisor;
         this.category = category;
         this.address = address;
+        this.exposed = exposed;
         executor = ORM.getWorkers().of();
     }
 
@@ -140,8 +142,16 @@ public class Handler implements Closeable {
         constructor.accept(this);
     }
 
-    void reset() {
-        // TODO reset by supervisors
+    synchronized void reset() {
+        if (open) {
+            open = false;
+            for (Handler child : children.values()) {
+                child.close();
+            }
+            children.clear();
+            construct();
+            open = true;
+        }
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {

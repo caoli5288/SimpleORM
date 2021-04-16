@@ -115,14 +115,12 @@ public class ClusterSystem implements Closeable {
     }
 
     void close(Handler actor) {// called from actor context
-        doContext(() -> {
-            if (open) {
-                refs.remove(actor.getAddress());
-            }
-            if (actor.getSupervisor() == null) {
-                cluster.close(this, actor);
-            }
-        });
+        if (open) {
+            refs.remove(actor.getAddress());
+        }
+        if (actor.exposed) {
+            cluster.close(this, actor);
+        }
     }
 
     void receive(byte[] bytes) {
@@ -175,7 +173,7 @@ public class ClusterSystem implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return ref(null, category)
+        return ref(null, category, true)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -186,7 +184,7 @@ public class ClusterSystem implements Closeable {
     }
 
     CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor, boolean expose) {
-        CompletableFuture<Handler> f = ref(supervisor, category)
+        CompletableFuture<Handler> f = ref(supervisor, category, expose)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
@@ -200,12 +198,12 @@ public class ClusterSystem implements Closeable {
         return f;
     }
 
-    private CompletableFuture<Handler> ref(Handler supervisor, String category) {
+    private CompletableFuture<Handler> ref(Handler supervisor, String category, boolean exposed) {
         // ask next random name from cluster instance
         return cluster.randomName(this)
                 .thenApply(s -> {
                     String address = name + ':' + s;
-                    Handler ref = new Handler(this, supervisor, category, address);
+                    Handler ref = new Handler(this, supervisor, category, address, exposed);
                     refs.put(ref.getAddress(), ref);
                     return ref;
                 });

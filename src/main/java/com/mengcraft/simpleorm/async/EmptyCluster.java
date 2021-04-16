@@ -30,8 +30,8 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public void close(ClusterSystem system, Handler actor) {
-
+    public CompletableFuture<?> close(ClusterSystem system, Handler ref) {
+        return Utils.enqueue(system.executor, () -> refs.remove(ref.getCategory(), ref.getCategory()));
     }
 
     @Override

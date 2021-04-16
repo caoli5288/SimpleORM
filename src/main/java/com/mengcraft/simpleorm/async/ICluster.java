@@ -10,7 +10,7 @@ public interface ICluster {
 
     void close(ClusterSystem system);
 
-    void close(ClusterSystem system, Handler actor);
+    CompletableFuture<?> close(ClusterSystem system, Handler actor);
 
     CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid);
 

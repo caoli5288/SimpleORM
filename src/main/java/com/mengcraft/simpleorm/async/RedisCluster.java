@@ -78,9 +78,9 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public void close(ClusterSystem system, Handler actor) {
-        ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(),
-                jedis -> jedis.srem(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+    public CompletableFuture<?> close(ClusterSystem system, Handler actor) {
+        return CompletableFuture.runAsync(() -> ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(),
+                jedis -> jedis.srem(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress())));
     }
 
     @Override
