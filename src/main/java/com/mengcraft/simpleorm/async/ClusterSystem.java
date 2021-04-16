@@ -138,7 +138,7 @@ public class ClusterSystem implements Closeable {
         if (fid == -1) {
             Utils.enqueue(receiver.executor, () -> {
                 Object let = receiver.receive(msg);
-                // send ack
+                // send ack(silently)
                 cluster.send(this, receiver, msg.getSender(), let, msg.getId());
             }).whenComplete((__, e) -> {
                 if (e != null) {
@@ -158,9 +158,9 @@ public class ClusterSystem implements Closeable {
     }
 
     CompletableFuture<Object> send(Handler caller, String receiver, Object obj) {
-        if (refs.containsKey(receiver)) {
-            Handler actor = refs.get(receiver);
-            return Utils.enqueue(actor.executor, () -> actor.receive(caller.getAddress(), obj));
+        Handler ref = refs.get(receiver);
+        if (ref != null) {// local actors
+            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj));
         }
         return cluster.send(this, caller, receiver, obj, -1)
                 .thenCompose(msg -> {

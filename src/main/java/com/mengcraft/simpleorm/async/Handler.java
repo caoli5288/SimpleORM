@@ -62,6 +62,9 @@ public class Handler implements Closeable {
         return this;
     }
 
+    /**
+     * A.K.A. akka ask msg
+     */
     public CompletableFuture<Object> sendMessage(String receiver, Object msg) {
         return system.send(this, receiver, msg);
     }
