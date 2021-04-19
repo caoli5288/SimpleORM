@@ -16,7 +16,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static java.lang.Thread.currentThread;
@@ -34,7 +33,6 @@ public class ClusterSystem implements Closeable {
     final ScheduledExecutorService executor;
     Consumer<ClusterSystem> constructor;
     private Thread context;
-    private BiConsumer<Handler, Throwable> exceptionally;
     @Getter
     private volatile boolean open;
 
@@ -57,13 +55,11 @@ public class ClusterSystem implements Closeable {
      * Call by none-supervisor handler
      */
     void fails(Handler ref, Throwable e) {
-        if (exceptionally != null) {
-            exceptionally.accept(ref, e);
+        if (e instanceof RuntimeException) {// reset with un-catches runtime exceptions
+            ref.reset();
+        } else {// close other wises
+            ref.close();
         }
-    }
-
-    public void exceptionally(BiConsumer<Handler, Throwable> exceptionally) {
-        this.exceptionally = exceptionally;
     }
 
     public void constructor(Consumer<ClusterSystem> constructor) {

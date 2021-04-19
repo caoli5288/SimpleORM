@@ -145,12 +145,14 @@ public class Handler implements Closeable {
     synchronized void reset() {
         if (open) {
             open = false;
-            for (Handler child : children.values()) {
-                child.close();
-            }
-            children.clear();
-            construct();
-            open = true;
+            doContext(() -> {
+                for (Handler child : children.values()) {
+                    child.close();
+                }
+                children.clear();
+                construct();
+                open = true;
+            });
         }
     }
 
