@@ -19,6 +19,16 @@ import java.util.function.Supplier;
 
 public class Utils {
 
+    @SuppressWarnings("unchecked")
+    public static CompletableFuture<Object> unpack(CompletableFuture<Object> future) {
+        return future.thenCompose(obj -> {
+            if (obj instanceof CompletableFuture) {
+                return unpack((CompletableFuture<Object>) obj);
+            }
+            return CompletableFuture.completedFuture(obj);
+        });
+    }
+
     public static boolean isNullOrEmpty(String msg) {
         return msg == null || msg.isEmpty();
     }

@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.lib.Utils;
 import lombok.Getter;
+import lombok.experimental.ExtensionMethod;
 
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +22,7 @@ import java.util.function.Consumer;
 import static java.lang.Thread.currentThread;
 
 @Beta
+@ExtensionMethod(Utils.class)
 public class ClusterSystem implements Closeable {
 
     private final Map<String, Handler> refs = Maps.newConcurrentMap();
@@ -130,15 +132,13 @@ public class ClusterSystem implements Closeable {
         Handler receiver = refs.get(msg.getReceiver());
         long fid = msg.getFutureId();
         if (fid == -1) {
-            Utils.enqueue(receiver.executor, () -> {
-                Object let = receiver.receive(msg);
-                // send ack(silently)
-                cluster.send(this, receiver, msg.getSender(), let, msg.getId());
-            }).whenComplete((__, e) -> {
-                if (e != null) {
-                    receiver.fails(e);
-                }
-            });
+            Utils.enqueue(receiver.executor, () -> receiver.receive(msg)).unpack()
+                    .thenApply(obj -> cluster.send(this, receiver, msg.getSender(), obj, msg.getId()))
+                    .whenComplete((__, e) -> {
+                        if (e != null) {
+                            receiver.fails(e);
+                        }
+                    });
         } else if (callbacks.containsKey(fid)) {
             CompletableFuture<Object> f = callbacks.remove(fid);
             Utils.enqueue(receiver.executor, () -> Handler.complete(f, msg))
@@ -154,7 +154,7 @@ public class ClusterSystem implements Closeable {
     CompletableFuture<Object> send(Handler caller, String receiver, Object obj) {
         Handler ref = refs.get(receiver);
         if (ref != null) {// local actors
-            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj));
+            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj)).unpack();
         }
         return cluster.send(this, caller, receiver, obj, -1)
                 .thenCompose(msg -> {
