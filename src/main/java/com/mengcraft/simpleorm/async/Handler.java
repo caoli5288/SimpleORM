@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm.async;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.ORM;
@@ -154,6 +155,10 @@ public class Handler implements Closeable {
                 open = true;
             });
         }
+    }
+
+    public void ensureContext() {
+        Preconditions.checkState(Thread.currentThread() == context);
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
