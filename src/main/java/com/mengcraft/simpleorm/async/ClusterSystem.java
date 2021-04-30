@@ -154,7 +154,8 @@ public class ClusterSystem implements Closeable {
     CompletableFuture<Object> send(Handler caller, String receiver, Object obj) {
         Handler ref = refs.get(receiver);
         if (ref != null) {// local actors
-            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj)).unpack();
+            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj)).unpack()
+                    .thenApplyAsync(r -> r, caller.executor);// compose to caller executor ctx
         }
         return cluster.send(this, caller, receiver, obj, -1)
                 .thenCompose(msg -> {
