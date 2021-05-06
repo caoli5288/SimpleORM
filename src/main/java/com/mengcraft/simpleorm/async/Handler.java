@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 import static java.lang.Thread.currentThread;
 
 @Getter
-public class Handler implements Closeable {
+public class Handler implements Closeable, Executor {
 
     @Getter(AccessLevel.NONE)
     private final Map<Class<?>, BiFunction<String, Object, Object>> handlers = Maps.newHashMap();
@@ -174,6 +174,11 @@ public class Handler implements Closeable {
      */
     void addChild(Handler ref) {
         children.put(ref.getAddress(), ref);
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        executor.execute(command);
     }
 
     static void complete(CompletableFuture<Object> f, Message msg) {
