@@ -16,7 +16,7 @@ public interface ICluster {
 
     CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor);
 
-    CompletableFuture<String> randomName(ClusterSystem system);
+    CompletableFuture<String> randomName(ClusterSystem system, boolean expose);
 
     CompletableFuture<Selector> query(ClusterSystem system, Selector selector);
 }

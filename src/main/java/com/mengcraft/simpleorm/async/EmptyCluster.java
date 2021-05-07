@@ -7,12 +7,13 @@ import com.mengcraft.simpleorm.lib.Utils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class EmptyCluster implements ICluster {
 
     private final Multimap<String, String> refs = ArrayListMultimap.create();// cat:address
-    private long number;
+    private final AtomicInteger localName = new AtomicInteger();
 
     @Override
     public void setup(ClusterSystem system) {
@@ -72,8 +73,8 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public CompletableFuture<String> randomName(ClusterSystem system) {
-        return Utils.enqueue(system.executor, () -> Long.toHexString(number++));
+    public CompletableFuture<String> randomName(ClusterSystem system, boolean expose) {
+        return CompletableFuture.completedFuture(Integer.toUnsignedString(localName.getAndIncrement(), 16));
     }
 
     @Override

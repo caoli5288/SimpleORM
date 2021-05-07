@@ -197,7 +197,7 @@ public class ClusterSystem implements Closeable {
 
     private CompletableFuture<Handler> ref(Handler supervisor, String category, boolean exposed) {
         // ask next random name from cluster instance
-        return cluster.randomName(this)
+        return cluster.randomName(this, exposed)
                 .thenApply(s -> {
                     String address = name + ':' + s;
                     Handler ref = new Handler(this, supervisor, category, address, exposed);

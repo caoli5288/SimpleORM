@@ -34,6 +34,7 @@ public class RedisCluster implements ICluster {
 
     private final String cluster;
     private final AtomicInteger mid = new AtomicInteger();
+    private final AtomicInteger localName = new AtomicInteger();
 
     public RedisCluster(String cluster) {
         this.cluster = cluster;
@@ -104,9 +105,12 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public CompletableFuture<String> randomName(ClusterSystem system) {
-        return CompletableFuture.supplyAsync(() -> Long.toHexString(ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(),
-                jedis -> jedis.incr(String.format(PATTERN_REFS, cluster)))));
+    public CompletableFuture<String> randomName(ClusterSystem system, boolean expose) {
+        if (expose) {
+            return CompletableFuture.supplyAsync(() -> Long.toUnsignedString(ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(),
+                    jedis -> jedis.incr(String.format(PATTERN_REFS, cluster))), 16));
+        }
+        return CompletableFuture.completedFuture("lc" + Integer.toUnsignedString(localName.getAndIncrement(), 16));
     }
 
     @Override
