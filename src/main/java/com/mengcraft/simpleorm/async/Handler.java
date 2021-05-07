@@ -36,6 +36,7 @@ public class Handler implements Closeable, Executor {
     private final Handler supervisor;
     private final String category;
     private final String address;
+    @Getter(AccessLevel.NONE)
     final boolean exposed;
     private volatile boolean open = true;
     @Setter(AccessLevel.PACKAGE)
@@ -185,7 +186,12 @@ public class Handler implements Closeable, Executor {
         if (Utils.isNullOrEmpty(msg.getContentType())) {
             f.complete(null);
         } else {
-            f.complete(asObject(msg));
+            Object obj = asObject(msg);
+            if (obj instanceof StateWrapper) {
+                f.completeExceptionally(new IllegalStateException(((StateWrapper) obj).getMessage()));
+            } else {
+                f.complete(obj);
+            }
         }
     }
 

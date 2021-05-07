@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm.lib;
 
 import com.google.common.io.ByteStreams;
+import com.mengcraft.simpleorm.async.Handler;
 import lombok.SneakyThrows;
 
 import javax.persistence.Table;
@@ -108,5 +109,9 @@ public class Utils {
 
     public static <T> CompletableFuture<T> future() {
         return new CompletableFuture<>();
+    }
+
+    public static boolean isNullOrClosed(Handler ref) {
+        return ref == null || !ref.isOpen();
     }
 }

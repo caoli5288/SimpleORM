@@ -132,6 +132,10 @@ public class ClusterSystem implements Closeable {
         Handler receiver = refs.get(msg.getReceiver());
         long fid = msg.getFutureId();
         if (fid == -1) {
+            if (Utils.isNullOrClosed(receiver)) {
+                cluster.send(this, receiver, msg.getSender(), new StateWrapper("Closed"), msg.getId());
+                return;
+            }
             Utils.enqueue(receiver.executor, () -> receiver.receive(msg)).unpack()
                     .thenApply(obj -> cluster.send(this, receiver, msg.getSender(), obj, msg.getId()))
                     .whenComplete((__, e) -> {
@@ -141,6 +145,9 @@ public class ClusterSystem implements Closeable {
                     });
         } else if (callbacks.containsKey(fid)) {
             CompletableFuture<Object> f = callbacks.remove(fid);
+            if (Utils.isNullOrClosed(receiver)) {
+                return;
+            }
             Utils.enqueue(receiver.executor, () -> Handler.complete(f, msg))
                     .whenComplete((__, e) -> {
                         if (e != null) {
