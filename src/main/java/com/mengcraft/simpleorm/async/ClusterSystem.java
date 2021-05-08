@@ -80,14 +80,12 @@ public class ClusterSystem implements Closeable {
     public synchronized void close() {
         if (open) {
             open = false;
-            doContext(() -> {
-                for (Handler s : refs.values()) {
-                    s.close();
-                }
-                refs.clear();
-                cluster.close(this);
-                executor.shutdown();
-            });
+            for (Handler s : refs.values()) {
+                s.close();
+            }
+            refs.clear();
+            cluster.close(this);
+            executor.shutdown();
         }
     }
 
@@ -115,9 +113,11 @@ public class ClusterSystem implements Closeable {
     void close(Handler actor) {// called from actor context
         if (open) {
             refs.remove(actor.getAddress());
-        }
-        if (actor.exposed) {
-            cluster.close(this, actor);
+            if (actor.exposed) {
+                cluster.close(this, actor);
+            }
+        } else if (actor.exposed) {
+            cluster.close(this, actor).join();
         }
     }
 
