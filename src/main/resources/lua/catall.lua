@@ -1,24 +1,18 @@
-local k = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
-local j = 'sa:' .. ARGV[1] .. ':hb'
-local t = redis.call('TIME')[1] - 20
-local ret = {}
+local cat = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
+local j = 'sa:' .. ARGV[1] .. ':hb:'
+local out = {}
 local cache = {}
-for _, act in ipairs(redis.call('SMEMBERS', k)) do
-    local sys = string.sub(act, 0, string.find(act, ':') - 1)
-    local _t = cache[sys]
-    if (not _t) then
-        _t = redis.call("HGET", j, sys)
-        if (not _t) then
-            _t = 0
-        else
-            _t = tonumber(_t)
-        end
-        cache[sys] = _t
-    end
-    if (_t >= t) then
-        table.insert(ret, act)
-    else
-        redis.call('SREM', k, act)
-    end
+for _, ref in ipairs(redis.call('SMEMBERS', cat)) do
+  local sys = string.sub(ref, 0, string.find(ref, ':') - 1)
+  local t = cache[sys]
+  if not t then
+    t = redis.call("TTL", j .. sys)
+    cache[sys] = t
+  end
+  if (t >= 0) then
+    table.insert(out, ref)
+  else
+    redis.call('SREM', cat, ref)
+  end
 end
-return ret
+return out

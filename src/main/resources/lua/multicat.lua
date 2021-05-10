@@ -1,29 +1,23 @@
-local k = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
-local j = 'sa:' .. ARGV[1] .. ':hb'
-local cnt = tonumber(ARGV[3])
-local t = redis.call('TIME')[1] - 20
-local res = {}
+local cat = 'sa:' .. ARGV[1] .. ':cat:' .. ARGV[2]
+local j = 'sa:' .. ARGV[1] .. ':hb:'
+local count = tonumber(ARGV[3])
+local out = {}
 local cache = {}
-while (#res < cnt) do
-    local act = redis.call('SRANDMEMBER', k)
+while #out < count do
+    local act = redis.call('SRANDMEMBER', cat)
     if not act then
-        return res
+        return out
     end
     local sys = string.sub(act, 0, string.find(act, ':') - 1)
-    local _t = cache[sys]
-    if (not _t) then
-        _t = redis.call("HGET", j, sys)
-        if (not _t) then
-            _t = 0
-        else
-            _t = tonumber(_t)
-        end
-        cache[sys] = _t
+    local t = cache[sys]
+    if not t then
+        t = redis.call("TTL", j .. sys)
+        cache[sys] = t
     end
-    if (_t >= t) then
-        table.insert(res, act)
+    if (t >= 0) then
+        table.insert(out, act)
     else
-        redis.call('SREM', k, act)
+        redis.call('SREM', cat, act)
     end
 end
-return res
+return out

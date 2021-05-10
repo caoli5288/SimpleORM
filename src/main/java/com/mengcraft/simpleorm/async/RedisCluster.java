@@ -3,6 +3,7 @@ package com.mengcraft.simpleorm.async;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
+import redis.clients.jedis.params.SetParams;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +26,7 @@ public class RedisCluster implements ICluster {
     /**
      * Hashes store handler address, heartbeat pairs.
      */
-    private static final String PATTERN_HEARTBEAT = "sa:%s:hb";
+    private static final String PATTERN_HEARTBEAT = "sa:%s:hb:%s";
 
     private static final String SCRIPT_CAT = "REDIS_CLUSTER_cat";
     private static final String SCRIPT_CAT_MULTI = "REDIS_CLUSTER_cat_multi";
@@ -56,9 +57,10 @@ public class RedisCluster implements ICluster {
     @Override
     public void reset(ClusterSystem system) {
         // force set heartbeat time
-        ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(), jedis -> jedis.hset(String.format(PATTERN_HEARTBEAT, cluster),
-                system.getName(),
-                String.valueOf(System.currentTimeMillis() / 1000)));
+        ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(), jedis -> jedis.set(String.format(PATTERN_HEARTBEAT, cluster, system.getName()),
+                "",
+                SetParams.setParams().ex(20)
+        ));
     }
 
     private Runnable heartbeat(ClusterSystem system) {
@@ -74,7 +76,7 @@ public class RedisCluster implements ICluster {
     public void close(ClusterSystem system) {
         RedisWrapper redis = ORM.globalRedisWrapper();
         redis.open(system.getOptions().getRedisDb(), jedis ->
-                jedis.hdel(String.format(PATTERN_HEARTBEAT, cluster), system.getName()));
+                jedis.del(String.format(PATTERN_HEARTBEAT, cluster, system.getName())));
         redis.unsubscribe(String.format(PATTERN_CH, cluster, system.getName()));
     }
 
