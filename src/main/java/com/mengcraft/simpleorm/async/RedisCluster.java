@@ -3,6 +3,7 @@ package com.mengcraft.simpleorm.async;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
+import lombok.RequiredArgsConstructor;
 import redis.clients.jedis.params.SetParams;
 
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +32,6 @@ public class RedisCluster implements ICluster {
     private static final String SCRIPT_CAT = "REDIS_CLUSTER_cat";
     private static final String SCRIPT_CAT_MULTI = "REDIS_CLUSTER_cat_multi";
     private static final String SCRIPT_CAT_ALL = "REDIS_CLUSTER_cat_all";
-    private static final String SCRIPT_HEARTBEAT = "REDIS_CLUSTER_heartbeat";
 
     private final String cluster;
     private final AtomicInteger mid = new AtomicInteger();
@@ -47,11 +47,10 @@ public class RedisCluster implements ICluster {
         redis.loads(SCRIPT_CAT, Utils.toString(Utils.getResourceStream("lua/cat.lua")));
         redis.loads(SCRIPT_CAT_MULTI, Utils.toString(Utils.getResourceStream("lua/multicat.lua")));
         redis.loads(SCRIPT_CAT_ALL, Utils.toString(Utils.getResourceStream("lua/catall.lua")));
-        redis.loads(SCRIPT_HEARTBEAT, Utils.toString(Utils.getResourceStream("lua/heartbeat.lua")));
         redis.subscribe(String.format(PATTERN_CH, cluster, system.getName()), new MessageBus(system));
         reset(system);
         // close automatic when system close(due to executor close)
-        system.executor.scheduleAtFixedRate(heartbeat(system), 8, 8, TimeUnit.SECONDS);
+        system.executor.scheduleAtFixedRate(new Task(system), 8, 8, TimeUnit.SECONDS);
     }
 
     @Override
@@ -61,15 +60,6 @@ public class RedisCluster implements ICluster {
                 "",
                 SetParams.setParams().ex(20)
         ));
-    }
-
-    private Runnable heartbeat(ClusterSystem system) {
-        return () -> {
-            Number ret = ORM.globalRedisWrapper().eval(system.getOptions().getRedisDb(), SCRIPT_HEARTBEAT, cluster, system.getName());
-            if (ret.intValue() != 1) {
-                system.reset();
-            }
-        };
     }
 
     @Override
@@ -149,5 +139,22 @@ public class RedisCluster implements ICluster {
             }
             return selector;
         });
+    }
+
+    @RequiredArgsConstructor
+    class Task implements Runnable {
+
+        private final ClusterSystem system;
+
+        @Override
+        public void run() {
+            String result = ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(), jedis ->
+                    jedis.set(String.format(PATTERN_HEARTBEAT, cluster, system.getName()),
+                            "",
+                            SetParams.setParams().xx().ex(20)));
+            if (!"OK".equals(result)) {
+                system.reset();
+            }
+        }
     }
 }
