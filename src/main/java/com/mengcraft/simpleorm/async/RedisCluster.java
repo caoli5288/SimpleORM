@@ -148,6 +148,14 @@ public class RedisCluster implements ICluster {
 
         @Override
         public void run() {
+            try {
+                run0();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void run0() {
             String result = ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(), jedis ->
                     jedis.set(String.format(PATTERN_HEARTBEAT, cluster, system.getName()),
                             "",
