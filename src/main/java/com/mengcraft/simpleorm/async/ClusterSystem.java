@@ -230,7 +230,7 @@ public class ClusterSystem implements Closeable {
     }
 
     public static CompletableFuture<ClusterSystem> create(String cluster, String name, ClusterOptions options) {
-        Preconditions.checkArgument(!Utils.isNullOrEmpty(name), "name cannot be empty");
+        Preconditions.checkArgument(!Utils.isNullOrEmpty(name) && !name.contains(":"), "name cannot be empty or contains colon");
         ClusterSystem system = new ClusterSystem(cluster, name, options);
         return Utils.enqueue(system.executor, () -> {
             system.setup();
