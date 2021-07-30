@@ -1,9 +1,6 @@
 package com.mengcraft.simpleorm.driver;
 
-import com.mengcraft.simpleorm.ORM;
-import com.mengcraft.simpleorm.lib.LibraryLoader;
-import com.mengcraft.simpleorm.lib.MavenLibrary;
-import org.bukkit.plugin.java.JavaPlugin;
+import com.mengcraft.simpleorm.lib.MavenLibs;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -22,7 +19,7 @@ public abstract class IDatabaseDriver {
         try {
             Class.forName(clazz());
         } catch (ClassNotFoundException e) {
-            LibraryLoader.load(JavaPlugin.getPlugin(ORM.class), MavenLibrary.of(description()), true);
+            MavenLibs.of(description()).load();
             load();
         }
     }

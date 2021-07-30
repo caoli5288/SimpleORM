@@ -3,8 +3,7 @@ package com.mengcraft.simpleorm;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
-import com.mengcraft.simpleorm.lib.LibraryLoader;
-import com.mengcraft.simpleorm.lib.MavenLibrary;
+import com.mengcraft.simpleorm.lib.MavenLibs;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
 import com.mengcraft.simpleorm.provider.IHandlerInitializer;
@@ -66,13 +65,14 @@ public class ORM extends JavaPlugin {
         try {
             Class.forName("com.avaje.ebean.EbeanServer");
         } catch (ClassNotFoundException e) {
-            loadExtLibrary(plugin);
+            MavenLibs.of("org.avaje:ebean:2.8.1").load();
+        }
+        try {
+            Class.forName("com.zaxxer.hikari.HikariDataSource");
+        } catch (ClassNotFoundException e) {
+            MavenLibs.of("com.zaxxer:HikariCP:5.0.0").load();
         }
         plugin.getLogger().info("ORM lib load okay!");
-    }
-
-    private static void loadExtLibrary(JavaPlugin plugin) {
-        LibraryLoader.load(plugin, MavenLibrary.of("org.avaje:ebean:2.8.1"), true);
     }
 
     @Override
