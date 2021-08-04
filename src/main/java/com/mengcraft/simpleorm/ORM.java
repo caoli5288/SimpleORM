@@ -70,7 +70,7 @@ public class ORM extends JavaPlugin {
         try {
             Class.forName("com.zaxxer.hikari.HikariDataSource");
         } catch (ClassNotFoundException e) {
-            MavenLibs.of("com.zaxxer:HikariCP:5.0.0").load();
+            MavenLibs.of("com.zaxxer:HikariCP:4.0.3").load();
         }
         plugin.getLogger().info("ORM lib load okay!");
     }
