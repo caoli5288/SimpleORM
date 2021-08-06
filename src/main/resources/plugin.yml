@@ -8,3 +8,7 @@ commands:
   simpleorm:
     description: None.
     permission: simpleorm.admin
+
+libraries:
+  - 'org.avaje:ebean:2.8.1'
+  - 'com.zaxxer:HikariCP:4.0.3'
