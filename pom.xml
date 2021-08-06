@@ -10,7 +10,7 @@
     <repositories>
         <repository>
             <id>i7mc</id>
-            <url>http://repo.i7mc.com/maven2</url>
+            <url>https://repo.i7mc.com/maven2</url>
         </repository>
     </repositories>
 
