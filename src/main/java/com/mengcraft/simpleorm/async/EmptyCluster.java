@@ -36,7 +36,7 @@ public class EmptyCluster implements ICluster {
     }
 
     @Override
-    public CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
+    public CompletableFuture<Message> send(ClusterSystem system, String sender, String receiver, Object obj, long fid) {
         return null;
     }
 

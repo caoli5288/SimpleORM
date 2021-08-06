@@ -13,6 +13,7 @@ import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
@@ -133,11 +134,11 @@ public class ClusterSystem implements Closeable {
         long fid = msg.getFutureId();
         if (fid == -1) {
             if (Utils.isNullOrClosed(receiver)) {
-                cluster.send(this, receiver, msg.getSender(), new StateWrapper("Closed"), msg.getId());
+                cluster.send(this, receiver.getAddress(), msg.getSender(), new StateWrapper("Closed"), msg.getId());
                 return;
             }
             Utils.enqueue(receiver.executor, () -> receiver.receive(msg)).unpack()
-                    .thenApply(obj -> cluster.send(this, receiver, msg.getSender(), obj, msg.getId()))
+                    .thenApply(obj -> cluster.send(this, receiver.getAddress(), msg.getSender(), obj, msg.getId()))
                     .whenComplete((__, e) -> {
                         if (e != null) {
                             receiver.fails(e);
@@ -159,12 +160,26 @@ public class ClusterSystem implements Closeable {
     }
 
     CompletableFuture<Object> send(Handler caller, String receiver, Object obj) {
+        return send0(caller.getAddress(), receiver, obj, caller.executor());
+    }
+
+    /**
+     * Send message as system sender.
+     * @param receiver
+     * @param obj
+     * @return
+     */
+    public CompletableFuture<Object> send(String receiver, Object obj) {
+        return send0(name, receiver, obj, executor);
+    }
+
+    private CompletableFuture<Object> send0(String sender, String receiver, Object obj, Executor exec) {
         Handler ref = refs.get(receiver);
         if (ref != null) {// local actors
-            return Utils.enqueue(ref.executor, () -> ref.receive(caller.getAddress(), obj)).unpack()
-                    .thenApplyAsync(r -> r, caller.executor);// compose to caller executor ctx
+            return Utils.enqueue(ref.executor, () -> ref.receive(sender, obj)).unpack()
+                    .thenApplyAsync(r -> r, exec);// compose to caller executor ctx
         }
-        return cluster.send(this, caller, receiver, obj, -1)
+        return cluster.send(this, sender, receiver, obj, -1)
                 .thenCompose(msg -> {
                     CompletableFuture<Object> f = Utils.orTimeout(Utils.future(), executor, 4, TimeUnit.SECONDS)
                             .whenComplete((__, e) -> {

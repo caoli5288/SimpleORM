@@ -12,7 +12,7 @@ public interface ICluster {
 
     CompletableFuture<?> close(ClusterSystem system, Handler actor);
 
-    CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid);
+    CompletableFuture<Message> send(ClusterSystem system, String sender, String receiver, Object obj, long fid);
 
     CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor);
 

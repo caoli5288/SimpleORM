@@ -77,17 +77,17 @@ public class RedisCluster implements ICluster {
     }
 
     @Override
-    public CompletableFuture<Message> send(ClusterSystem system, Handler caller, String address, Object obj, long fid) {
+    public CompletableFuture<Message> send(ClusterSystem system, String sender, String receiver, Object obj, long fid) {
         Message msg = new Message();
         msg.setId(Integer.toUnsignedLong(mid.getAndIncrement()));
         msg.setFutureId(fid);
-        msg.setSender(caller.getAddress());
-        msg.setReceiver(address);
+        msg.setSender(sender);
+        msg.setReceiver(receiver);
         if (obj != null) {
             msg.setContents(ORM.json().toJsonTree(obj));
             msg.setContentType(obj.getClass().getName());
         }
-        String ch = String.format(PATTERN_CH, cluster, address.substring(0, address.indexOf(':')));
+        String ch = String.format(PATTERN_CH, cluster, receiver.substring(0, receiver.indexOf(':')));
         String json = ORM.json().toJson(msg);
         // Use system FJPs for pure IO tasks.
         return CompletableFuture.supplyAsync(() -> {
