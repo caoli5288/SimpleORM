@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static java.lang.Thread.currentThread;
@@ -34,7 +35,7 @@ public class ClusterSystem implements Closeable {
     final ICluster cluster;
     final Map<Long, CompletableFuture<Object>> callbacks = Maps.newConcurrentMap();
     final ScheduledExecutorService executor;
-    Consumer<ClusterSystem> constructor;
+    BiConsumer<State, ClusterSystem> constructor;
     private Thread context;
     @Getter
     private volatile boolean open;
@@ -66,9 +67,13 @@ public class ClusterSystem implements Closeable {
     }
 
     public void constructor(Consumer<ClusterSystem> constructor) {
+        constructor((__, system) -> constructor.accept(system));
+    }
+
+    public void constructor(BiConsumer<State, ClusterSystem> constructor) {
         Preconditions.checkState(this.constructor == null, "call constructor twice");
         this.constructor = constructor;
-        constructor.accept(this);
+        constructor.accept(State.BOOTSTRAP, this);
     }
 
     void setup() {
@@ -107,7 +112,7 @@ public class ClusterSystem implements Closeable {
             refs.clear();
             cluster.reset(this);
             open = true;
-            constructor.accept(this);
+            constructor.accept(State.RESET, this);
         }
     }
 
@@ -165,6 +170,7 @@ public class ClusterSystem implements Closeable {
 
     /**
      * Send message as system sender.
+     *
      * @param receiver
      * @param obj
      * @return
@@ -259,5 +265,9 @@ public class ClusterSystem implements Closeable {
 
     public static CompletableFuture<ClusterSystem> create(String cluster) {
         return create(cluster, Long.toHexString(ThreadLocalRandom.current().nextLong()), ClusterOptions.builder().build());
+    }
+
+    public enum State {
+        BOOTSTRAP, RESET
     }
 }
