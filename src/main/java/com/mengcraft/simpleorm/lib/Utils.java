@@ -73,11 +73,9 @@ public class Utils {
         return separateCamelCase(cls.getSimpleName(), "_").toLowerCase();
     }
 
-    private static final Method URL_CLASS_LOADER_addURL = getAccessibleMethod(URLClassLoader.class, "addURL", URL.class);
-
     @SneakyThrows
     public static void addUrl(URLClassLoader cl, URL url) {
-        URL_CLASS_LOADER_addURL.invoke(cl, url);
+        URLClassLoaderAccessor.addUrl(cl, url);
     }
 
     public static <T> CompletableFuture<T> enqueue(Executor executor, Supplier<T> supplier) {

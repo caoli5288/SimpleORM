@@ -41,7 +41,6 @@ public class MavenLibs {
     private static final Logger LOGGER = Logger.getLogger("MavenLibs");
     private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{(.+?)}");
     private static final Set<String> NSS = Sets.newHashSet();
-    private static final Method INVOKER_addURL = asInvoker(URLClassLoader.class, "addURL", URL.class);
 
     private final Map<String, String> properties = Maps.newHashMap();
     private final String ns;
@@ -86,7 +85,7 @@ public class MavenLibs {
             LOGGER.info("Get " + url);
             downloads(jar, url);
         }
-        INVOKER_addURL.invoke(cl, jar.toURI().toURL());
+        URLClassLoaderAccessor.addUrl((URLClassLoader) cl, jar.toURI().toURL());
         LOGGER.info(String.format("Load MavenLibs(%s)", ns));
     }
 
@@ -173,7 +172,8 @@ public class MavenLibs {
             Method method = cls.getDeclaredMethod(name, parameters);
             method.setAccessible(true);
             return method;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
     }

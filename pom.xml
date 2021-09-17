@@ -67,11 +67,7 @@
                 <configuration>
                     <artifactSet>
                         <includes>
-                            <include>com.zaxxer:*</include>
-                            <include>org.slf4j:*</include>
-                            <include>redis.clients:jedis</include>
-                            <include>org.apache.commons:commons-pool2</include>
-                            <include>org.mongodb:*</include>
+                            <include>org.mongodb:mongo-java-driver</include>
                         </includes>
                     </artifactSet>
                 </configuration>
