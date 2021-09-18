@@ -3,7 +3,7 @@
 
     <groupId>com.mengcraft</groupId>
     <artifactId>simpleorm</artifactId>
-    <version>1.6-SNAPSHOT</version>
+    <version>1.6.1</version>
 
     <name>SimpleORM</name>
 
@@ -65,6 +65,7 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
                     <artifactSet>
                         <includes>
                             <include>org.mongodb:mongo-java-driver</include>
