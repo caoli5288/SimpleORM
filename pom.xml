@@ -3,7 +3,7 @@
 
     <groupId>com.mengcraft</groupId>
     <artifactId>simpleorm</artifactId>
-    <version>1.6.1</version>
+    <version>1.6.2-SNAPSHOT</version>
 
     <name>SimpleORM</name>
 

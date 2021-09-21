@@ -27,7 +27,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -233,16 +232,16 @@ public class RedisWrapper implements Closeable {
 
         private final Multimap<String, Consumer<byte[]>> consumers = HashMultimap.create();
         private final Executor executor;
-        private final AtomicBoolean exec = new AtomicBoolean();
+        private boolean receiving;
 
-        void addSubscriber(String channel, Consumer<byte[]> consumer) {
-            if (exec.get() && !consumers.containsKey(channel)) {
+         synchronized void addSubscriber(String channel, Consumer<byte[]> consumer) {
+            if (receiving && !consumers.containsKey(channel)) {
                 subscribe(channel.getBytes(StandardCharsets.UTF_8));
             }
             consumers.put(channel, consumer);
         }
 
-        void removeSubscriber(String channel, Consumer<byte[]> consumer) {
+        synchronized void removeSubscriber(String channel, Consumer<byte[]> consumer) {
             if (consumers.remove(channel, consumer) && !consumers.containsKey(channel)) {
                 unsubscribe(channel.getBytes(StandardCharsets.UTF_8));
             }
@@ -273,16 +272,18 @@ public class RedisWrapper implements Closeable {
                     Jedis client = resources.getResource();
                     client.subscribe(this, new byte[0]);// hacked
                     // then set this state to true
-                    exec.set(true);
-                    for (String s : consumers.keySet()) {
-                        subscribe(s.getBytes(StandardCharsets.UTF_8));
+                    synchronized (this) {
+                        receiving = true;
+                        for (String s : consumers.keySet()) {
+                            subscribe(s.getBytes(StandardCharsets.UTF_8));
+                        }
                     }
                     try {
                         exec();
                     } catch (Exception e) {
                         e.printStackTrace();
                     } finally {
-                        exec.set(false);
+                        receiving = false;
                         client.close();
                     }
                 }
