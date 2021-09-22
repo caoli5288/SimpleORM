@@ -23,6 +23,9 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -65,6 +68,9 @@ public class GsonUtils {
         GsonBuilder b = new GsonBuilder();
         b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
         b.registerTypeAdapter(ScriptObjectMirror.class, new ScriptObjectSerializer());
+        b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
+        b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
+        b.registerTypeAdapter(LocalTime.class, new LocalTimeSerializer());
         if (!nil(policy)) {
             b.setFieldNamingPolicy(policy);
         }
@@ -101,4 +107,51 @@ public class GsonUtils {
         }
     }
 
+    public static class LocalDateTimeSerializer implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+
+        @Override
+        public LocalDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonPrimitive()) {
+                return LocalDateTime.parse(json.getAsString());
+            }
+            throw new JsonParseException(String.format("%s cannot parsed to LocalDateTime", json));
+        }
+
+        @Override
+        public JsonElement serialize(LocalDateTime src, Type type, JsonSerializationContext context) {
+            return context.serialize(src.toString());
+        }
+    }
+
+    public static class LocalDateSerializer implements JsonSerializer<LocalDate>, JsonDeserializer<LocalDate> {
+
+        @Override
+        public LocalDate deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonPrimitive()) {
+                return LocalDate.parse(json.getAsString());
+            }
+            throw new JsonParseException(String.format("%s cannot parsed to LocalDate", json));
+        }
+
+        @Override
+        public JsonElement serialize(LocalDate src, Type typeOfSrc, JsonSerializationContext context) {
+            return context.serialize(src.toString());
+        }
+    }
+
+    public static class LocalTimeSerializer implements JsonSerializer<LocalTime>, JsonDeserializer<LocalTime> {
+
+        @Override
+        public LocalTime deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonPrimitive()) {
+                return LocalTime.parse(json.getAsString());
+            }
+            throw new JsonParseException(String.format("%s cannot parsed to LocalTime", json));
+        }
+
+        @Override
+        public JsonElement serialize(LocalTime src, Type typeOfSrc, JsonSerializationContext context) {
+            return context.serialize(src.toString());
+        }
+    }
 }
