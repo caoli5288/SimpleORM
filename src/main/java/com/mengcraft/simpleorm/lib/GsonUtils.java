@@ -26,8 +26,6 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -73,7 +71,6 @@ public class GsonUtils {
         b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
         b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
         b.registerTypeAdapter(LocalTime.class, new LocalTimeSerializer());
-        b.registerTypeAdapter(Date.class, new DateSerializer());
         if (!nil(policy)) {
             b.setFieldNamingPolicy(policy);
         }
@@ -155,22 +152,6 @@ public class GsonUtils {
         @Override
         public JsonElement serialize(LocalTime src, Type typeOfSrc, JsonSerializationContext context) {
             return context.serialize(src.toString());
-        }
-    }
-
-    public static class DateSerializer implements JsonSerializer<Date>, JsonDeserializer<Date> {
-
-        @Override
-        public Date deserialize(JsonElement json, Type t, JsonDeserializationContext context) throws JsonParseException {
-            if (json.isJsonPrimitive()) {
-                return Date.from(LocalDateTime.parse(json.getAsString()).atZone(ZoneId.systemDefault()).toInstant());
-            }
-            throw new JsonParseException("json element is not instance of Date");
-        }
-
-        @Override
-        public JsonElement serialize(Date src, Type t, JsonSerializationContext context) {
-            return context.serialize(LocalDateTime.ofInstant(src.toInstant(), ZoneId.systemDefault()), LocalDateTime.class);
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.mengcraft.simpleorm;
 
+import com.mengcraft.simpleorm.mongo.IMongoCodec;
+import com.mengcraft.simpleorm.mongo.LegacyMongoCodec;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -8,12 +10,12 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.gridfs.GridFS;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -41,16 +43,18 @@ public class MongoWrapper {
     }
 
     public MongoDatabaseWrapper open(String database, String collection) {
-        return new MongoDatabaseWrapper(client.getDB(database).getCollection(collection));
+        return open(database, collection, LegacyMongoCodec.getInstance());
     }
 
+    public MongoDatabaseWrapper open(String database, String collection, IMongoCodec serializer) {
+        return new MongoDatabaseWrapper(client.getDB(database).getCollection(collection), serializer);
+    }
+
+    @RequiredArgsConstructor
     public static class MongoDatabaseWrapper {
 
         private final DBCollection collection;
-
-        MongoDatabaseWrapper(DBCollection collection) {
-            this.collection = collection;
-        }
+        private final IMongoCodec codec;
 
         public void open(Consumer<DBCollection> consumer) {
             consumer.accept(collection);
@@ -61,20 +65,20 @@ public class MongoWrapper {
         }
 
         public <T> void save(T bean) {
-            collection.save(new BasicDBObject(ORM.serialize(bean)));
+            collection.save(codec.encode(bean));
         }
 
-        public <T> void save(T bean, Function<T, Object> idprovider) {
-            Map<String, Object> serializer = ORM.serialize(bean);
-            serializer.put("_id", idprovider.apply(bean));
-            collection.save(new BasicDBObject(serializer));
+        public <T> void save(T bean, Function<T, Object> ids) {
+            DBObject serializer = this.codec.encode(bean);
+            serializer.put("_id", ids.apply(bean));
+            collection.save(serializer);
         }
 
         public <T> List<T> findAll(Class<T> clz, DBObject ref) {
             DBCursor cursor = collection.find(ref);
             List<T> container = new ArrayList<>();
             for (DBObject object : cursor) {
-                container.add(ORM.deserialize(clz, (Map<String, Object>) object.toMap()));
+                container.add(codec.decode(clz, object));
             }
             cursor.close();
             return container;
@@ -82,7 +86,7 @@ public class MongoWrapper {
 
         public <T> DBCursorWrapper<T> findLazy(Class<T> clz, DBObject ref) {
             DBCursor cursor = collection.find(ref);
-            return new DBCursorWrapper<>(clz, cursor);
+            return new DBCursorWrapper<>(clz, cursor, codec);
         }
 
         public <T> T find(Class<T> clz, DBObject find) {
@@ -90,7 +94,7 @@ public class MongoWrapper {
             if (nil(result)) {
                 return null;
             }
-            return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
+            return codec.decode(clz, result);
         }
 
         public <T> T find(Class<T> clz, Object id) {
@@ -98,7 +102,7 @@ public class MongoWrapper {
             if (nil(result)) {
                 return null;
             }
-            return ORM.deserialize(clz, (Map<String, Object>) result.toMap());
+            return codec.decode(clz, result);
         }
 
         public void remove(Object id) {
@@ -106,22 +110,19 @@ public class MongoWrapper {
         }
     }
 
+    @RequiredArgsConstructor
     public static class DBCursorWrapper<T> implements Iterator<T> {
 
         private final Class<T> clz;
         private final DBCursor origin;
-
-        DBCursorWrapper(Class<T> clz, DBCursor origin) {
-            this.clz = clz;
-            this.origin = origin;
-        }
+        private final IMongoCodec codec;
 
         public boolean hasNext() {
             return origin.hasNext();
         }
 
         public T next() {
-            return ORM.deserialize(clz, (Map<String, Object>) origin.next().toMap());
+            return codec.decode(clz, origin.next());
         }
 
         protected void finalize() {// safe to memory leak
