@@ -18,7 +18,7 @@ public class BsonMongoCodec implements IMongoCodec {
 
     @Override
     public <T> T decode(Class<T> cls, DBObject obj) {
-        return null;
+        return (T) CodecMap.ofCodec(cls).decode(obj);
     }
 
     public static BsonMongoCodec getInstance() {

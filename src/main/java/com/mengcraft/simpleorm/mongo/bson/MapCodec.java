@@ -1,18 +1,38 @@
 package com.mengcraft.simpleorm.mongo.bson;
 
+import com.google.common.collect.Maps;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import lombok.SneakyThrows;
 
+import java.lang.reflect.Constructor;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 public class MapCodec implements ICodec {
 
-    private final Class<?> mapCls;
+    private static final Map<Class<?>, Class<?>> MAPS = Maps.newHashMap();
 
+    static {
+        MAPS.put(Map.class, HashMap.class);
+        MAPS.put(ConcurrentMap.class, ConcurrentHashMap.class);
+        MAPS.put(ConcurrentNavigableMap.class, ConcurrentSkipListMap.class);
+        MAPS.put(NavigableMap.class, TreeMap.class);
+        MAPS.put(SortedMap.class, TreeMap.class);
+    }
+
+    private final Constructor<?> constructor;
+
+    @SneakyThrows
     public MapCodec(Class<?> mapCls) {
-        // TODO
-        this.mapCls = mapCls;
+        constructor = MAPS.getOrDefault(mapCls, mapCls).getConstructor();
     }
 
     @Override
@@ -37,7 +57,6 @@ public class MapCodec implements ICodec {
 
     @SneakyThrows
     private Map<String, Object> newMap() {
-        // TODO
-        return (Map<String, Object>) mapCls.newInstance();
+        return (Map<String, Object>) constructor.newInstance();
     }
 }
