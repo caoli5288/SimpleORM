@@ -1,10 +1,9 @@
 package com.mengcraft.simpleorm.mongo;
 
+import com.mengcraft.simpleorm.mongo.bson.CodecMap;
+import com.mengcraft.simpleorm.mongo.bson.ICodec;
 import com.mongodb.DBObject;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
-
-import java.util.Map;
 
 @RequiredArgsConstructor
 public class BsonMongoCodec implements IMongoCodec {
@@ -13,17 +12,8 @@ public class BsonMongoCodec implements IMongoCodec {
 
     @Override
     public DBObject encode(Object obj) {
-        if (obj instanceof ConfigurationSerializable) {
-            return encodeMap(((ConfigurationSerializable) obj).serialize());
-        }
-        if (obj instanceof Map) {
-            return encodeMap((Map<String, Object>) obj);
-        }
-        return null;
-    }
-
-    private DBObject encodeMap(Map<String, Object> serialize) {
-        return null;
+        ICodec ofCodec = CodecMap.ofCodec(obj.getClass());
+        return (DBObject) ofCodec.encode(obj);
     }
 
     @Override

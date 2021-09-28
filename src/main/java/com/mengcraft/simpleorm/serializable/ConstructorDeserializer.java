@@ -7,13 +7,13 @@ import java.lang.reflect.Constructor;
 import java.util.Map;
 
 @AllArgsConstructor
-public class ConstructorDeserializer<T> implements IDeserializer<T> {
+public class ConstructorDeserializer implements IDeserializer {
 
     private final Constructor<?> constructor;
 
     @Override
     @SneakyThrows
-    public T deserialize(Class<T> cls, Map<String, ?> map) {
-        return (T) constructor.newInstance(map);
+    public Object deserialize(Class<?> cls, Map<String, Object> map) {
+        return constructor.newInstance(map);
     }
 }

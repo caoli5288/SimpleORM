@@ -54,7 +54,7 @@ public class MongoWrapper {
     public static class MongoDatabaseWrapper {
 
         private final DBCollection collection;
-        private final IMongoCodec codec;
+        private final IMongoCodec clsCodec;
 
         public void open(Consumer<DBCollection> consumer) {
             consumer.accept(collection);
@@ -65,11 +65,11 @@ public class MongoWrapper {
         }
 
         public <T> void save(T bean) {
-            collection.save(codec.encode(bean));
+            collection.save(clsCodec.encode(bean));
         }
 
         public <T> void save(T bean, Function<T, Object> ids) {
-            DBObject serializer = this.codec.encode(bean);
+            DBObject serializer = this.clsCodec.encode(bean);
             serializer.put("_id", ids.apply(bean));
             collection.save(serializer);
         }
@@ -78,7 +78,7 @@ public class MongoWrapper {
             DBCursor cursor = collection.find(ref);
             List<T> container = new ArrayList<>();
             for (DBObject object : cursor) {
-                container.add(codec.decode(clz, object));
+                container.add(clsCodec.decode(clz, object));
             }
             cursor.close();
             return container;
@@ -86,7 +86,7 @@ public class MongoWrapper {
 
         public <T> DBCursorWrapper<T> findLazy(Class<T> clz, DBObject ref) {
             DBCursor cursor = collection.find(ref);
-            return new DBCursorWrapper<>(clz, cursor, codec);
+            return new DBCursorWrapper<>(clz, cursor, clsCodec);
         }
 
         public <T> T find(Class<T> clz, DBObject find) {
@@ -94,7 +94,7 @@ public class MongoWrapper {
             if (nil(result)) {
                 return null;
             }
-            return codec.decode(clz, result);
+            return clsCodec.decode(clz, result);
         }
 
         public <T> T find(Class<T> clz, Object id) {
@@ -102,7 +102,7 @@ public class MongoWrapper {
             if (nil(result)) {
                 return null;
             }
-            return codec.decode(clz, result);
+            return clsCodec.decode(clz, result);
         }
 
         public void remove(Object id) {
@@ -115,14 +115,14 @@ public class MongoWrapper {
 
         private final Class<T> clz;
         private final DBCursor origin;
-        private final IMongoCodec codec;
+        private final IMongoCodec clsCodec;
 
         public boolean hasNext() {
             return origin.hasNext();
         }
 
         public T next() {
-            return codec.decode(clz, origin.next());
+            return clsCodec.decode(clz, origin.next());
         }
 
         protected void finalize() {// safe to memory leak

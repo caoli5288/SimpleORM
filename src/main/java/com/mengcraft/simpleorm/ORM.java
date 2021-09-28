@@ -199,7 +199,7 @@ public class ORM extends JavaPlugin {
     }
 
     public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
-        return SerializableTypes.asDeserializer(clz).deserialize(clz, map);
+        return (T) SerializableTypes.asDeserializer(clz).deserialize(clz, map);
     }
 
     public static <T> T attr(Player player, @NonNull String key) {

@@ -5,12 +5,12 @@ import com.mengcraft.simpleorm.ORM;
 
 import java.util.Map;
 
-public class GsonDeserializer<T> implements IDeserializer<T> {
+public class GsonDeserializer implements IDeserializer {
 
-    public static final GsonDeserializer<?> INSTANCE = new GsonDeserializer<>();
+    public static final GsonDeserializer INSTANCE = new GsonDeserializer();
 
     @Override
-    public T deserialize(Class<T> cls, Map<String, ?> map) {
+    public Object deserialize(Class<?> cls, Map<String, Object> map) {
         Gson json = ORM.json();
         return json.fromJson(json.toJsonTree(map), cls);
     }

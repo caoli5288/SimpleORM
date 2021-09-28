@@ -1,6 +1,6 @@
 package com.mengcraft.simpleorm.mongo.bson;
 
-public interface IBsonCodec {
+public interface ICodec {
 
     Object encode(Object to);
 

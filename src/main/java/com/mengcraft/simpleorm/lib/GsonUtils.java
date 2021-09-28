@@ -99,11 +99,11 @@ public class GsonUtils {
                 return null;
             }
             Class<ConfigurationSerializable> cls = (Class<ConfigurationSerializable>) type;
-            IDeserializer<ConfigurationSerializable> deserializer = SerializableTypes.asDeserializer(cls);
+            IDeserializer deserializer = SerializableTypes.asDeserializer(cls);
             if (deserializer == GsonDeserializer.INSTANCE) {// delegate to defaults
                 return null;
             }
-            return deserializer.deserialize(cls, (Map<String, ?>) dump(element));
+            return (ConfigurationSerializable) deserializer.deserialize(cls, (Map<String, Object>) dump(element));
         }
     }
 

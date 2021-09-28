@@ -1,6 +1,6 @@
 package com.mengcraft.simpleorm.mongo.bson;
 
-public class CharacterCodec implements IBsonCodec {
+public class CharacterCodec implements ICodec {
 
     @Override
     public Object encode(Object to) {

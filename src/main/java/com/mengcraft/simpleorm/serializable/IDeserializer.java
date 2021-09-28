@@ -2,7 +2,7 @@ package com.mengcraft.simpleorm.serializable;
 
 import java.util.Map;
 
-public interface IDeserializer<T> {
+public interface IDeserializer {
 
-    T deserialize(Class<T> cls, Map<String, ?> map);
+    Object deserialize(Class<?> cls, Map<String, Object> map);
 }

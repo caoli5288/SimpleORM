@@ -10,26 +10,26 @@ import java.util.Map;
 
 public class SerializableTypes {
 
-    private static final Map<Class<?>, IDeserializer<?>> TYPES = Maps.newHashMap();
+    private static final Map<Class<?>, IDeserializer> TYPES = Maps.newHashMap();
 
     @SuppressWarnings("all")
-    public static <T> IDeserializer<T> asDeserializer(Class<T> cls) {
-        return (IDeserializer<T>) TYPES.computeIfAbsent(cls, SerializableTypes::parse);
+    public static IDeserializer asDeserializer(Class<?> cls) {
+        return (IDeserializer) TYPES.computeIfAbsent(cls, SerializableTypes::of);
     }
 
-    private static IDeserializer<?> parse(Class<?> cls) {
+    private static IDeserializer of(Class<?> cls) {
         if (cls.isAssignableFrom(ConfigurationSerializable.class)) {
             for (Constructor<?> constructor : cls.getDeclaredConstructors()) {
                 Class<?>[] types = constructor.getParameterTypes();
                 if (isSerializableTypes(types)) {
                     constructor.setAccessible(true);
-                    return new ConstructorDeserializer<>(constructor);
+                    return new ConstructorDeserializer(constructor);
                 }
             }
             for (Method method : cls.getDeclaredMethods()) {
                 if ((method.getModifiers() & Modifier.STATIC) != 0 && isSerializableTypes(method.getParameterTypes())) {
                     method.setAccessible(true);
-                    return new MethodDeserializer<>(method);
+                    return new MethodDeserializer(method);
                 }
             }
         }
