@@ -23,6 +23,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.sql.DataSource;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -186,6 +187,7 @@ public class ORM extends JavaPlugin {
     }
 
     public static Map<String, Object> serialize(Object any) {
+        Preconditions.checkArgument(!(any instanceof Collection), "serialize Collection");
         if (any instanceof ConfigurationSerializable) {
             return ((ConfigurationSerializable) any).serialize();
         }
