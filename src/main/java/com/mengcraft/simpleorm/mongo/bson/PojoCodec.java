@@ -13,9 +13,6 @@ import javax.persistence.Transient;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -90,22 +87,7 @@ public class PojoCodec implements ICodec {
         if (serializedName != null && Utils.isNullOrEmpty(serializedName.value())) {
             fieldName = serializedName.value();
         }
-        return new Property(fieldName, field, LazyValue.of(() -> ofCodec(field)));
-    }
-
-    private static ICodec ofCodec(Field field) {
-        Class<?> typeCls = field.getType();
-        if (Collection.class.isAssignableFrom(typeCls)) {
-            Type type = field.getGenericType();
-            if (type instanceof ParameterizedType) {
-                ParameterizedType genericType = (ParameterizedType) type;
-                Class<?> tokenClass = (Class<?>) genericType.getActualTypeArguments()[0];
-                if (tokenClass != Object.class) {
-                    return new CollectionCodec(typeCls, tokenClass);
-                }
-            }
-        }
-        return CodecMap.ofCodec(typeCls);
+        return new Property(fieldName, field, LazyValue.of(() -> CodecMap.asTypeCodec(field.getGenericType())));
     }
 
     @RequiredArgsConstructor

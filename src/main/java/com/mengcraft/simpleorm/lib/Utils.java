@@ -49,11 +49,15 @@ public class Utils {
         return field;
     }
 
-    @SneakyThrows
     public static Constructor<?> getAccessibleConstructor(Class<?> cls) {
-        Constructor<?> constructor = cls.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        return constructor;
+        try {
+            Constructor<?> constructor = cls.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            return constructor;
+        } catch (Exception e) {
+            // noop
+        }
+        return null;
     }
 
     /**
