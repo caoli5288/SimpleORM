@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm.mongo.bson;
 
 import com.google.common.collect.Maps;
+import com.mengcraft.simpleorm.lib.Utils;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import lombok.SneakyThrows;
@@ -32,7 +33,7 @@ public class MapCodec implements ICodec {
 
     @SneakyThrows
     public MapCodec(Class<?> mapCls) {
-        constructor = MAPS.getOrDefault(mapCls, mapCls).getConstructor();
+        constructor = Utils.getAccessibleConstructor(MAPS.getOrDefault(mapCls, mapCls));
     }
 
     @Override
@@ -48,7 +49,7 @@ public class MapCodec implements ICodec {
     @Override
     public Object decode(Object from) {
         Map<String, Object> map = newMap();
-        DBObject obj = (DBObject) from;
+        Map<String, Object> obj = (Map<String, Object>) from;
         for (String s : obj.keySet()) {
             map.put(s, CodecMap.decode(obj.get(s)));
         }

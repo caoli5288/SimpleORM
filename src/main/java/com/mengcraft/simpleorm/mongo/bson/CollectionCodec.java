@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm.mongo.bson;
 
 import com.google.common.collect.Maps;
+import com.mengcraft.simpleorm.lib.Utils;
 import com.mongodb.BasicDBList;
 import lombok.SneakyThrows;
 
@@ -45,7 +46,7 @@ public class CollectionCodec implements ICodec {
 
     @SneakyThrows
     public CollectionCodec(Class<?> cls) {
-        constructor = COLLECTIONS.getOrDefault(cls, cls).getConstructor();
+        constructor = Utils.getAccessibleConstructor(COLLECTIONS.getOrDefault(cls, cls));
     }
 
     @Override

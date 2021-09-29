@@ -6,6 +6,7 @@ import lombok.SneakyThrows;
 
 import javax.persistence.Table;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -46,6 +47,13 @@ public class Utils {
         Field field = cls.getDeclaredField(fieldName);
         field.setAccessible(true);
         return field;
+    }
+
+    @SneakyThrows
+    public static Constructor<?> getAccessibleConstructor(Class<?> cls) {
+        Constructor<?> constructor = cls.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor;
     }
 
     /**

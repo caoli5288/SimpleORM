@@ -24,7 +24,7 @@ public class PojoCodec implements ICodec {
     @SneakyThrows
     public PojoCodec(Class<?> cls) {
         // TODO use bean factory
-        constructor = asAccessibleConstructor(cls);
+        constructor = Utils.getAccessibleConstructor(cls);
         setup(cls);
     }
 
@@ -66,13 +66,6 @@ public class PojoCodec implements ICodec {
             }
         }
         return instance;
-    }
-
-    @SneakyThrows
-    private static Constructor<?> asAccessibleConstructor(Class<?> cls) {
-        Constructor<?> constructor = cls.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        return constructor;
     }
 
     @RequiredArgsConstructor
