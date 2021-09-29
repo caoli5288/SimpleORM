@@ -13,6 +13,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class PojoCodec implements ICodec {
@@ -56,7 +57,7 @@ public class PojoCodec implements ICodec {
     @SneakyThrows
     public Object decode(Object from) {
         // TODO use bean factory
-        DBObject obj = (DBObject) from;
+        Map<String, Object> obj = (Map<String, Object>) from;
         Object instance = constructor.newInstance();
         for (Property field : properties) {
             Object value = obj.get(field.fieldName);

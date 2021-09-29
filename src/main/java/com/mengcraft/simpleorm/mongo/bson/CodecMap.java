@@ -78,6 +78,9 @@ public class CodecMap {
         if (Collection.class.isAssignableFrom(cls)) {
             return new CollectionCodec(cls);
         }
+        if (cls.isEnum()) {
+            return new EnumCodec(cls);
+        }
         return new PojoCodec(cls);
     }
 }
