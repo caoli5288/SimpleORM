@@ -23,6 +23,7 @@ import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -68,9 +69,11 @@ public class GsonUtils {
         GsonBuilder b = new GsonBuilder();
         b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
         b.registerTypeAdapter(ScriptObjectMirror.class, new ScriptObjectSerializer());
+        // jsr310s
         b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
         b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
         b.registerTypeAdapter(LocalTime.class, new LocalTimeSerializer());
+        b.registerTypeAdapter(Instant.class, new InstantSerializer());
         if (!nil(policy)) {
             b.setFieldNamingPolicy(policy);
         }
@@ -152,6 +155,22 @@ public class GsonUtils {
         @Override
         public JsonElement serialize(LocalTime src, Type typeOfSrc, JsonSerializationContext context) {
             return context.serialize(src.toString());
+        }
+    }
+
+    public static class InstantSerializer implements JsonSerializer<Instant>, JsonDeserializer<Instant> {
+
+        @Override
+        public Instant deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            if (json.isJsonPrimitive()) {
+                return Instant.ofEpochMilli(json.getAsLong());
+            }
+            throw new JsonParseException(String.format("%s cannot parsed to Instant", json));
+        }
+
+        @Override
+        public JsonElement serialize(Instant src, Type typeOfSrc, JsonSerializationContext context) {
+            return context.serialize(src.toEpochMilli());
         }
     }
 }

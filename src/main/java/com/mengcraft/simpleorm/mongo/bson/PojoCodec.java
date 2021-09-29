@@ -23,7 +23,7 @@ public class PojoCodec implements ICodec {
     @SneakyThrows
     public PojoCodec(Class<?> cls) {
         // TODO use bean factory
-        constructor = cls.getConstructor();
+        constructor = asAccessibleConstructor(cls);
         setup(cls);
     }
 
@@ -67,12 +67,18 @@ public class PojoCodec implements ICodec {
         return instance;
     }
 
+    @SneakyThrows
+    private static Constructor<?> asAccessibleConstructor(Class<?> cls) {
+        Constructor<?> constructor = cls.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor;
+    }
+
     @RequiredArgsConstructor
     private static class Property {
 
         private final String fieldName;
         private final Field field;
-        private final ICodec ofCodec;
 
         public static Property of(Field field) {
             // check transients
@@ -87,23 +93,26 @@ public class PojoCodec implements ICodec {
             // try set accessible first
             field.setAccessible(true);
             // codecs
-            ICodec ofCodec = CodecMap.ofCodec(field.getType());
             String fieldName = field.getName();
             SerializedName serializedName = field.getDeclaredAnnotation(SerializedName.class);
             if (serializedName != null && Utils.isNullOrEmpty(serializedName.value())) {
                 fieldName = serializedName.value();
             }
-            return new Property(fieldName, field, ofCodec);
+            return new Property(fieldName, field);
         }
 
         @SneakyThrows
         public Object get(Object to) {
-            return ofCodec.encode(field.get(to));
+            Object obj = field.get(to);
+            if (obj != null) {
+                return CodecMap.encode(obj);
+            }
+            return null;
         }
 
         @SneakyThrows
         public void set(Object obj, Object value) {
-            field.set(obj, ofCodec.decode(value));
+            field.set(obj, CodecMap.ofCodec(field.getType()).decode(value));
         }
     }
 }
