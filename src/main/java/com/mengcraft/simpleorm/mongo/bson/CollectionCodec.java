@@ -24,6 +24,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TransferQueue;
+import java.util.function.Function;
 
 public class CollectionCodec implements ICodec {
 
@@ -43,10 +44,13 @@ public class CollectionCodec implements ICodec {
     }
 
     private final Constructor<?> constructor;
+    private final Function<Object, Object> decoder;
 
     @SneakyThrows
-    public CollectionCodec(Class<?> cls) {
+    public CollectionCodec(Class<?> cls, Class<?> token) {
         constructor = Utils.getAccessibleConstructor(COLLECTIONS.getOrDefault(cls, cls));
+        decoder = token == null ? CodecMap::decode
+                : obj -> CodecMap.ofCodec(token).decode(obj);
     }
 
     @Override
@@ -64,7 +68,11 @@ public class CollectionCodec implements ICodec {
     public Object decode(Object from) {
         Collection<Object> collection = (Collection) constructor.newInstance();
         for (Object entry : ((Collection) from)) {
-            collection.add(CodecMap.decode(entry));
+            if (entry == null) {
+                collection.add(null);
+            } else {
+                collection.add(decoder.apply(entry));
+            }
         }
         return collection;
     }

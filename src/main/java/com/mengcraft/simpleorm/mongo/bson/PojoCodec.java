@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm.mongo.bson;
 
 import com.google.common.collect.Lists;
 import com.google.gson.annotations.SerializedName;
+import com.mengcraft.simpleorm.lib.LazyValue;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -12,6 +13,9 @@ import javax.persistence.Transient;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +38,7 @@ public class PojoCodec implements ICodec {
             setup(superCls);
         }
         for (Field field : cls.getDeclaredFields()) {
-            Property of = Property.of(field);
+            Property of = asProperty(field);
             if (of != null) {
                 properties.add(of);
             }
@@ -68,32 +72,48 @@ public class PojoCodec implements ICodec {
         return instance;
     }
 
+    private static Property asProperty(Field field) {
+        // check transients
+        int modifiers = field.getModifiers();
+        if ((modifiers & Modifier.TRANSIENT) != 0 || (modifiers & Modifier.STATIC) != 0) {
+            return null;
+        }
+        Transient isTransient = field.getDeclaredAnnotation(Transient.class);
+        if (isTransient != null) {
+            return null;
+        }
+        // try set accessible first
+        field.setAccessible(true);
+        // codecs
+        String fieldName = field.getName();
+        SerializedName serializedName = field.getDeclaredAnnotation(SerializedName.class);
+        if (serializedName != null && Utils.isNullOrEmpty(serializedName.value())) {
+            fieldName = serializedName.value();
+        }
+        return new Property(fieldName, field, LazyValue.of(() -> ofCodec(field)));
+    }
+
+    private static ICodec ofCodec(Field field) {
+        Class<?> typeCls = field.getType();
+        if (Collection.class.isAssignableFrom(typeCls)) {
+            Type type = field.getGenericType();
+            if (type instanceof ParameterizedType) {
+                ParameterizedType genericType = (ParameterizedType) type;
+                Class<?> tokenClass = (Class<?>) genericType.getActualTypeArguments()[0];
+                if (tokenClass != Object.class) {
+                    return new CollectionCodec(typeCls, tokenClass);
+                }
+            }
+        }
+        return CodecMap.ofCodec(typeCls);
+    }
+
     @RequiredArgsConstructor
     private static class Property {
 
         private final String fieldName;
         private final Field field;
-
-        public static Property of(Field field) {
-            // check transients
-            int modifiers = field.getModifiers();
-            if ((modifiers & Modifier.TRANSIENT) != 0 || (modifiers & Modifier.STATIC) != 0) {
-                return null;
-            }
-            Transient isTransient = field.getDeclaredAnnotation(Transient.class);
-            if (isTransient != null) {
-                return null;
-            }
-            // try set accessible first
-            field.setAccessible(true);
-            // codecs
-            String fieldName = field.getName();
-            SerializedName serializedName = field.getDeclaredAnnotation(SerializedName.class);
-            if (serializedName != null && Utils.isNullOrEmpty(serializedName.value())) {
-                fieldName = serializedName.value();
-            }
-            return new Property(fieldName, field);
-        }
+        private final LazyValue<ICodec> decoder;
 
         @SneakyThrows
         public Object get(Object to) {
@@ -106,7 +126,7 @@ public class PojoCodec implements ICodec {
 
         @SneakyThrows
         public void set(Object obj, Object value) {
-            field.set(obj, CodecMap.ofCodec(field.getType()).decode(value));
+            field.set(obj, decoder.get().decode(value));
         }
     }
 }

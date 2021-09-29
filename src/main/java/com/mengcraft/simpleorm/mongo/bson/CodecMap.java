@@ -76,7 +76,7 @@ public class CodecMap {
             return new MapCodec(cls);
         }
         if (Collection.class.isAssignableFrom(cls)) {
-            return new CollectionCodec(cls);
+            return new CollectionCodec(cls, null);
         }
         if (cls.isEnum()) {
             return new EnumCodec(cls);
