@@ -6,6 +6,7 @@ import com.mongodb.BasicDBList;
 import lombok.SneakyThrows;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -24,7 +25,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TransferQueue;
-import java.util.function.Function;
 
 public class CollectionCodec implements ICodec {
 
@@ -44,13 +44,12 @@ public class CollectionCodec implements ICodec {
     }
 
     private final Constructor<?> constructor;
-    private final Function<Object, Object> decoder;
+    private final ICodec decoder;
 
     @SneakyThrows
-    public CollectionCodec(Class<?> cls, Class<?> token) {
+    public CollectionCodec(Class<?> cls, Type token) {
         constructor = Utils.getAccessibleConstructor(COLLECTIONS.getOrDefault(cls, cls));
-        decoder = token == null ? CodecMap::decode
-                : obj -> CodecMap.ofCodec(token).decode(obj);
+        decoder = token == null ? SimpleCodec.getInstance() : CodecMap.asTypeCodec(token);
     }
 
     @Override
@@ -71,7 +70,7 @@ public class CollectionCodec implements ICodec {
             if (entry == null) {
                 collection.add(null);
             } else {
-                collection.add(decoder.apply(entry));
+                collection.add(decoder.decode(entry));
             }
         }
         return collection;

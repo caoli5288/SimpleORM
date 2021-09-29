@@ -8,6 +8,8 @@ import com.mengcraft.simpleorm.mongo.bson.jsr310.LocalTimeCodec;
 import org.bson.types.ObjectId;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -66,6 +68,24 @@ public class CodecMap {
 
     public static ICodec ofCodec(Class<?> type) {
         return MAP.computeIfAbsent(type, CodecMap::asCodec);
+    }
+
+    public static ICodec asTypeCodec(Type token) {
+        if (token instanceof ParameterizedType) {
+            return CodecMap.ofCodec((ParameterizedType) token);
+        }
+        return CodecMap.ofCodec((Class<?>) token);
+    }
+
+    public static ICodec ofCodec(ParameterizedType type) {
+        Class<?> baseCls = (Class<?>) type.getRawType();
+        if (Collection.class.isAssignableFrom(baseCls)) {// only support Collections for now
+            Type tokenCls = type.getActualTypeArguments()[0];
+            if (tokenCls != Object.class) {
+                return new CollectionCodec(baseCls, tokenCls);
+            }
+        }
+        return ofCodec(baseCls);
     }
 
     private static ICodec asCodec(Class<?> cls) {
