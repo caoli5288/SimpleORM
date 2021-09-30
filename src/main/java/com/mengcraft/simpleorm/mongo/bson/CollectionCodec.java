@@ -6,7 +6,6 @@ import com.mongodb.BasicDBList;
 import lombok.SneakyThrows;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -47,9 +46,9 @@ public class CollectionCodec implements ICodec {
     private final ICodec decoder;
 
     @SneakyThrows
-    public CollectionCodec(Class<?> cls, Type token) {
+    public CollectionCodec(Class<?> cls, ICodec decoder) {
         constructor = Utils.getAccessibleConstructor(COLLECTIONS.getOrDefault(cls, cls));
-        decoder = token == null ? SimpleCodec.getInstance() : CodecMap.asTypeCodec(token);
+        this.decoder = decoder;
     }
 
     @Override

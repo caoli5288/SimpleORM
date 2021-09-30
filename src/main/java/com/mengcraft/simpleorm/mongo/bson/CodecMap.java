@@ -70,22 +70,26 @@ public class CodecMap {
         return MAP.computeIfAbsent(type, CodecMap::asCodec);
     }
 
-    public static ICodec asTypeCodec(Type token) {
-        if (token instanceof ParameterizedType) {
-            return CodecMap.ofCodec((ParameterizedType) token);
-        }
-        return CodecMap.ofCodec((Class<?>) token);
-    }
-
     public static ICodec ofCodec(ParameterizedType type) {
         Class<?> baseCls = (Class<?>) type.getRawType();
         if (Collection.class.isAssignableFrom(baseCls)) {// only support Collections for now
-            Type tokenCls = type.getActualTypeArguments()[0];
-            if (tokenCls != Object.class) {
-                return new CollectionCodec(baseCls, tokenCls);
-            }
+            Type token = type.getActualTypeArguments()[0];
+            return new CollectionCodec(baseCls, fromType(token));
+        } else if (Map.class.isAssignableFrom(baseCls)) {
+            Type token = type.getActualTypeArguments()[1];
+            return new MapCodec(baseCls, fromType(token));
         }
         return ofCodec(baseCls);
+    }
+
+    static ICodec fromType(Type token) {
+        if (token instanceof Class) {
+            return CodecMap.ofCodec((Class<?>) token);
+        }
+        if (token instanceof ParameterizedType) {
+            return CodecMap.ofCodec((ParameterizedType) token);
+        }
+        return SimpleCodec.getInstance();
     }
 
     private static ICodec asCodec(Class<?> cls) {
@@ -93,10 +97,10 @@ public class CodecMap {
             return new ConfigurationSerializableCodec(cls);
         }
         if (Map.class.isAssignableFrom(cls)) {
-            return new MapCodec(cls);
+            return new MapCodec(cls, SimpleCodec.getInstance());
         }
         if (Collection.class.isAssignableFrom(cls)) {
-            return new CollectionCodec(cls, null);
+            return new CollectionCodec(cls, SimpleCodec.getInstance());
         }
         if (cls.isEnum()) {
             return new EnumCodec(cls);

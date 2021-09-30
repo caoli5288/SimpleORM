@@ -30,10 +30,12 @@ public class MapCodec implements ICodec {
     }
 
     private final Constructor<?> constructor;
+    private final ICodec decoder;
 
     @SneakyThrows
-    public MapCodec(Class<?> mapCls) {
+    public MapCodec(Class<?> mapCls, ICodec decoder) {
         constructor = Utils.getAccessibleConstructor(MAPS.getOrDefault(mapCls, mapCls));
+        this.decoder = decoder;
     }
 
     @Override
@@ -51,7 +53,7 @@ public class MapCodec implements ICodec {
         Map<String, Object> map = newMap();
         Map<String, Object> obj = (Map<String, Object>) from;
         for (String s : obj.keySet()) {
-            map.put(s, CodecMap.decode(obj.get(s)));
+            map.put(s, decoder.decode(obj.get(s)));
         }
         return map;
     }
