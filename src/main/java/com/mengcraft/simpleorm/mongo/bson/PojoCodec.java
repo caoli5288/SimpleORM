@@ -84,7 +84,7 @@ public class PojoCodec implements ICodec {
         // codecs
         String fieldName = field.getName();
         SerializedName serializedName = field.getDeclaredAnnotation(SerializedName.class);
-        if (serializedName != null && Utils.isNullOrEmpty(serializedName.value())) {
+        if (serializedName != null && !Utils.isNullOrEmpty(serializedName.value())) {
             fieldName = serializedName.value();
         }
         return new Property(fieldName, field, LazyValue.of(() -> CodecMap.fromType(field.getGenericType())));
