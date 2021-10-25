@@ -67,7 +67,16 @@ public class CodecMap {
     }
 
     public static ICodec ofCodec(Class<?> type) {
-        return MAP.computeIfAbsent(type, CodecMap::asCodec);
+        ICodec iCodec = MAP.get(type);
+        if (iCodec != null) {
+            return iCodec;
+        }
+        iCodec = asCodec(type);
+        MAP.put(type, iCodec);
+        if (iCodec instanceof PojoCodec) {
+            ((PojoCodec) iCodec).setup(type);
+        }
+        return iCodec;
     }
 
     public static ICodec ofCodec(ParameterizedType type) {

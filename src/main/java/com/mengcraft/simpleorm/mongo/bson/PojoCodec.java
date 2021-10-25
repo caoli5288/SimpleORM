@@ -2,7 +2,6 @@ package com.mengcraft.simpleorm.mongo.bson;
 
 import com.google.common.collect.Lists;
 import com.google.gson.annotations.SerializedName;
-import com.mengcraft.simpleorm.lib.LazyValue;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -26,10 +25,9 @@ public class PojoCodec implements ICodec {
     public PojoCodec(Class<?> cls) {
         // TODO use bean factory
         constructor = Utils.getAccessibleConstructor(cls);
-        setup(cls);
     }
 
-    private void setup(Class<?> cls) {
+    void setup(Class<?> cls) {
         Class<?> superCls = cls.getSuperclass();
         if (superCls != null && superCls != Object.class) {
             setup(superCls);
@@ -87,7 +85,7 @@ public class PojoCodec implements ICodec {
         if (serializedName != null && !Utils.isNullOrEmpty(serializedName.value())) {
             fieldName = serializedName.value();
         }
-        return new Property(fieldName, field, LazyValue.of(() -> CodecMap.fromType(field.getGenericType())));
+        return new Property(fieldName, field, CodecMap.fromType(field.getGenericType()));
     }
 
     @RequiredArgsConstructor
@@ -95,7 +93,7 @@ public class PojoCodec implements ICodec {
 
         private final String fieldName;
         private final Field field;
-        private final LazyValue<ICodec> decoder;
+        private final ICodec decoder;
 
         @SneakyThrows
         public Object get(Object to) {
@@ -108,7 +106,7 @@ public class PojoCodec implements ICodec {
 
         @SneakyThrows
         public void set(Object obj, Object value) {
-            field.set(obj, decoder.get().decode(value));
+            field.set(obj, decoder.decode(value));
         }
     }
 }
