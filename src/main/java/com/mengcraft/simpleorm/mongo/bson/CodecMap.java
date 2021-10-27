@@ -22,7 +22,7 @@ import java.util.UUID;
 
 public class CodecMap {
 
-    private static final Map<Class<?>, ICodec> MAP = Maps.newHashMap();
+    private static final Map<Type, ICodec> MAP = Maps.newHashMap();
 
     static {
         // noop
@@ -66,20 +66,34 @@ public class CodecMap {
         return ofCodec(obj.getClass()).decode(obj);
     }
 
+    /**
+     * @deprecated use {@link CodecMap#fromType(Type)}
+     */
     public static ICodec ofCodec(Class<?> type) {
-        ICodec iCodec = MAP.get(type);
-        if (iCodec != null) {
-            return iCodec;
-        }
-        iCodec = asCodec(type);
-        MAP.put(type, iCodec);
-        if (iCodec instanceof PojoCodec) {
-            ((PojoCodec) iCodec).setup(type);
+        return fromType(type);
+    }
+
+    public static ICodec fromType(Type token) {
+        ICodec iCodec = MAP.get(token);
+        if (iCodec == null) {
+            synchronized (MAP) {
+                iCodec = MAP.get(token);
+                if (iCodec == null) {
+                    MAP.put(token, iCodec = new Codec());
+                    if (token instanceof Class) {
+                        ((Codec) iCodec).iCodec = fromClass((Class<?>) token);
+                    } else if (token instanceof ParameterizedType) {
+                        ((Codec) iCodec).iCodec = fromParameterized((ParameterizedType) token);
+                    } else {
+                        ((Codec) iCodec).iCodec = SimpleCodec.getInstance();
+                    }
+                }
+            }
         }
         return iCodec;
     }
 
-    public static ICodec ofCodec(ParameterizedType type) {
+    static ICodec fromParameterized(ParameterizedType type) {
         Class<?> baseCls = (Class<?>) type.getRawType();
         if (Collection.class.isAssignableFrom(baseCls)) {// only support Collections for now
             Type token = type.getActualTypeArguments()[0];
@@ -88,20 +102,10 @@ public class CodecMap {
             Type token = type.getActualTypeArguments()[1];
             return new MapCodec(baseCls, fromType(token));
         }
-        return ofCodec(baseCls);
+        return fromClass(baseCls);
     }
 
-    static ICodec fromType(Type token) {
-        if (token instanceof Class) {
-            return CodecMap.ofCodec((Class<?>) token);
-        }
-        if (token instanceof ParameterizedType) {
-            return CodecMap.ofCodec((ParameterizedType) token);
-        }
-        return SimpleCodec.getInstance();
-    }
-
-    private static ICodec asCodec(Class<?> cls) {
+    private static ICodec fromClass(Class<?> cls) {
         if (ConfigurationSerializable.class.isAssignableFrom(cls)) {
             return new ConfigurationSerializableCodec(cls);
         }
@@ -115,5 +119,20 @@ public class CodecMap {
             return new EnumCodec(cls);
         }
         return new PojoCodec(cls);
+    }
+
+    static class Codec implements ICodec {
+
+        ICodec iCodec;
+
+        @Override
+        public Object encode(Object to) {
+            return iCodec.encode(to);
+        }
+
+        @Override
+        public Object decode(Object from) {
+            return iCodec.decode(from);
+        }
     }
 }

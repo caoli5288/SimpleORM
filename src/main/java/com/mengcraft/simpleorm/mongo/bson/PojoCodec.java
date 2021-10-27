@@ -25,12 +25,13 @@ public class PojoCodec implements ICodec {
     public PojoCodec(Class<?> cls) {
         // TODO use bean factory
         constructor = Utils.getAccessibleConstructor(cls);
+        lookup(cls);
     }
 
-    void setup(Class<?> cls) {
+    void lookup(Class<?> cls) {
         Class<?> superCls = cls.getSuperclass();
         if (superCls != null && superCls != Object.class) {
-            setup(superCls);
+            lookup(superCls);
         }
         for (Field field : cls.getDeclaredFields()) {
             Property of = asProperty(field);
