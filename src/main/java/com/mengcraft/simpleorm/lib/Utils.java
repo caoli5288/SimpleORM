@@ -3,6 +3,7 @@ package com.mengcraft.simpleorm.lib;
 import com.google.common.io.ByteStreams;
 import com.mengcraft.simpleorm.async.Handler;
 import lombok.SneakyThrows;
+import org.yaml.snakeyaml.Yaml;
 
 import javax.persistence.Table;
 import java.io.InputStream;
@@ -20,6 +21,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class Utils {
+
+    public static final Yaml YAML = new Yaml();
 
     @SuppressWarnings("unchecked")
     public static CompletableFuture<Object> unpack(CompletableFuture<Object> future) {
@@ -107,10 +110,11 @@ public class Utils {
         return Utils.class.getClassLoader().getResourceAsStream(s);
     }
 
-    public static <T> void let(T obj, Consumer<T> consumer) {
+    public static <T> T let(T obj, Consumer<T> consumer) {
         if (obj != null) {
             consumer.accept(obj);
         }
+        return obj;
     }
 
     public static <T> CompletableFuture<T> orTimeout(CompletableFuture<T> f, ScheduledExecutorService executor, long t, TimeUnit unit) {

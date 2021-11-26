@@ -14,6 +14,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import lombok.experimental.ExtensionMethod;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -31,6 +32,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+@ExtensionMethod(Utils.class)
 public class ORM extends JavaPlugin {
 
     public static final String PLAYER_METADATA_KEY = "ORM_METADATA";
@@ -39,7 +41,7 @@ public class ORM extends JavaPlugin {
     private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
-    private static DataSource sharedDs;
+    private static volatile DataSource sharedDs;
     static ORM plugin;
     private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
     private static IRedisProvider redisProvider;
@@ -113,6 +115,14 @@ public class ORM extends JavaPlugin {
         } catch (InterruptedException e) {
             getLogger().log(Level.WARNING, "Error occurred while await workers closed", e);
         }
+        globalRedisWrapper.let(it -> {
+            it.close();
+            globalRedisWrapper = null;
+        });
+        globalMongoWrapper.let(it -> {
+            it.close();
+            globalMongoWrapper = null;
+        });
     }
 
     public static boolean nil(Object any) {

@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm;
 
 import com.mengcraft.simpleorm.mongo.IMongoCodec;
 import com.mengcraft.simpleorm.mongo.LegacyMongoCodec;
+import com.mengcraft.simpleorm.mongo.MongoResourceManager;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -12,7 +13,9 @@ import com.mongodb.MongoTimeoutException;
 import com.mongodb.gridfs.GridFS;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -21,7 +24,7 @@ import java.util.function.Function;
 
 import static com.mengcraft.simpleorm.ORM.nil;
 
-public class MongoWrapper {
+public class MongoWrapper implements Closeable {
 
     private final MongoClient client;
 
@@ -30,8 +33,23 @@ public class MongoWrapper {
         client = new MongoClient(url);
     }
 
+    @Override
+    public void close() {
+        client.close();
+    }
+
     public static MongoWrapper b(String url) {
         return new MongoWrapper(new MongoClientURI(url));
+    }
+
+    /**
+     * Create an MongoResourceManager for given plugin.
+     *
+     * @param plugin the owner plugin
+     * @return then new instance
+     */
+    public IResourceManager openResourceManager(JavaPlugin plugin) {
+        return new MongoResourceManager(plugin, openFileSystem("files", plugin.getName()));
     }
 
     public GridFS openFileSystem(String database, String bucket) {
