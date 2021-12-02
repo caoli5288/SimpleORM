@@ -8,6 +8,7 @@ import com.mengcraft.simpleorm.lib.Utils;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -16,10 +17,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -140,5 +144,42 @@ public class MongoResourceManager implements IResourceManager {
         Preconditions.checkNotNull(config);
 
         saveResource(filename, new ByteArrayInputStream(config.saveToString().getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Override
+    public void sync(List<String> filenames) {
+        for (String filename : filenames) {
+            sync(filename);
+        }
+    }
+
+    @SneakyThrows
+    private void sync(String filename) {
+        File f = new File(owner.getDataFolder(), filename);
+        GridFSDBFile one = fs.findOne(filename);
+        if (one == null) {
+            if (!f.exists()) {
+                owner.saveResource(filename, false);
+            }
+            saveResource(filename, new FileInputStream(f));
+            owner.getLogger().info(String.format("MongoResourceManager.sync() Upload %s to server", filename));
+        } else {// remote exists
+            if (f.exists()) {// local exists
+                String md5 = one.getMD5();
+                if (!md5.equals(Utils.md5(f))) {// not matches
+                    long t = one.getUploadDate().getTime();
+                    if (t >= f.lastModified()) {
+                        one.writeTo(f);
+                        owner.getLogger().info(String.format("MongoResourceManager.sync() Overwrite %s from server", filename));
+                    } else {
+                        saveResource(filename, new FileInputStream(f));
+                        owner.getLogger().info(String.format("MongoResourceManager.sync() Upload %s to file server", filename));
+                    }
+                }
+            } else {// merge to local
+                one.writeTo(f);
+                owner.getLogger().info(String.format("MongoResourceManager.sync() Overwrite %s from server", filename));
+            }
+        }
     }
 }

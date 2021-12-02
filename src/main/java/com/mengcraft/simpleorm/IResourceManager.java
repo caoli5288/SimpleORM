@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
+import java.util.List;
 
 public interface IResourceManager {
 
@@ -27,4 +28,6 @@ public interface IResourceManager {
     void saveConfig();
 
     void saveConfig(@NotNull String filename, @NotNull FileConfiguration config);
+
+    void sync(List<String> filenames);
 }

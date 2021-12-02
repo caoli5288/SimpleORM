@@ -1,11 +1,14 @@
 package com.mengcraft.simpleorm.lib;
 
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.Files;
 import com.mengcraft.simpleorm.async.Handler;
 import lombok.SneakyThrows;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.persistence.Table;
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -127,5 +130,10 @@ public class Utils {
 
     public static boolean isNullOrClosed(Handler ref) {
         return ref == null || !ref.isOpen();
+    }
+
+    @SneakyThrows
+    public static String md5(File f) {
+        return Hashing.md5().hashBytes(Files.toByteArray(f)).toString();
     }
 }
