@@ -2,9 +2,12 @@ package com.mengcraft.simpleorm.mongo;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.mengcraft.simpleorm.IResourceManager;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.lib.Utils;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import lombok.RequiredArgsConstructor;
@@ -151,6 +154,16 @@ public class MongoResourceManager implements IResourceManager {
         for (String filename : filenames) {
             sync(filename);
         }
+    }
+
+    @Override
+    public List<String> list() {
+        List<String> out = Lists.newArrayList();
+        DBCursor cursor = fs.getFileList();
+        for (DBObject object : cursor) {
+            Utils.let(object.get("filename"), s -> out.add(s.toString()));
+        }
+        return out;
     }
 
     @SneakyThrows

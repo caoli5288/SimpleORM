@@ -30,4 +30,6 @@ public interface IResourceManager {
     void saveConfig(@NotNull String filename, @NotNull FileConfiguration config);
 
     void sync(List<String> filenames);
+
+    List<String> list();
 }
