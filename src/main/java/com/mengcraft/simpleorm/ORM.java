@@ -292,4 +292,12 @@ public class ORM extends JavaPlugin {
     public static <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
         return Utils.enqueue(workers.of(ns), supplier);
     }
+
+    public static CompletableFuture<Void> sync(Runnable runnable) {
+        return Utils.enqueue(workers.ofServer(), runnable);
+    }
+
+    public static <T> CompletableFuture<T> sync(Supplier<T> supplier) {
+        return Utils.enqueue(workers.ofServer(), supplier);
+    }
 }
