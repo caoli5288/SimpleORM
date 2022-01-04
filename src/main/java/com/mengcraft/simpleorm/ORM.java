@@ -16,7 +16,6 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.experimental.ExtensionMethod;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -44,7 +43,6 @@ public class ORM extends JavaPlugin {
     private static volatile DataSource sharedDs;
     static ORM plugin;
     private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
-    private static IRedisProvider redisProvider;
     @Getter
     private static FluxWorkers workers;
 
@@ -88,14 +86,13 @@ public class ORM extends JavaPlugin {
     public void onEnable() {
         new MetricsLite(this);
         workers = new FluxWorkers(getConfig().getInt("cpus", 8));
+        getServer().getPluginManager().registerEvents(new Listeners(this), this);
         if (nil(globalRedisWrapper)) {
-            if (redisProvider == null) {
-                FileConfiguration config = getConfig();
-                String redisUrl = config.getString("redis.url", "");
-                int max = config.getInt("redis.max_conn", -1);
-                redisProvider = RedisProviders.of(config.getString("redis.master_name"), redisUrl, max, config.getString("redis.password"));
+            String redisUrl = getConfig().getString("redis.url");
+            if (!Utils.isNullOrEmpty(redisUrl)) {
+                int max = getConfig().getInt("redis.max_conn", -1);
+                globalRedisWrapper = new RedisWrapper(RedisProviders.of(getConfig().getString("redis.master_name"), redisUrl, max, getConfig().getString("redis.password")));
             }
-            globalRedisWrapper = new RedisWrapper(redisProvider);
         }
         if (nil(globalMongoWrapper)) {
             String url = getConfig().getString("mongo.url", "");
@@ -103,7 +100,6 @@ public class ORM extends JavaPlugin {
                 globalMongoWrapper = MongoWrapper.b(url);
             }
         }
-        getServer().getPluginManager().registerEvents(new Listeners(this), this);
         getLogger().info("Welcome!");
     }
 
@@ -274,7 +270,8 @@ public class ORM extends JavaPlugin {
 
     public static void setRedisProvider(IRedisProvider redisProvider) {
         Preconditions.checkState(!isFullyEnabled(), "Cannot be set after ORM enabled");
-        ORM.redisProvider = redisProvider;
+        // Can overwrite by others
+        globalRedisWrapper = new RedisWrapper(redisProvider);
     }
 
     public static CompletableFuture<Void> enqueue(Runnable runnable) {
