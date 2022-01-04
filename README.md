@@ -98,7 +98,23 @@ dataSource:
 
 ## Redis wrapper
 
-### Configure
+```groovy
+import com.mengcraft.simpleorm.ORM
+import com.mengcraft.simpleorm.RedisWrapper
+
+RedisWrapper redisWrapper = ORM.globalRedisWrapper();
+redisWrapper.open(redis -> {
+    redis.set("my_key", "my_value");
+    // more codes here
+});
+
+redisWrapper.subscribe("my_channel", message -> {
+    Foo foo = Foo.decode(message);
+    // codes here
+});
+
+redisWrapper.publish("my_channel", "my_message");
+```
 
 If you want to enable sentinel mode, make sure `master_name` is a non-empty string, or make sure it is `null`. An example is shown below.
 
@@ -109,25 +125,42 @@ redis:
   max_conn: 20
 ```
 
-### Codes
+## Serializer
 
-```java
-class Foo {
-    void bar() {
-        RedisWrapper redisWrapper = ORM.globalRedisWrapper();
-        redisWrapper.open(redis -> {
-            redis.set("my_key", "my_value");
-            // more codes here
-        });
+Simple serializer and deserializer based on Gson with `ConfigurationSerializable`, `ScriptObjectMirror` and `JSR310` supported.
 
-        redisWrapper.subscribe("my_channel", message -> {
-            Foo foo = Foo.decode(message);
-            // codes here
-        });
+```groovy
+import com.google.common.base.Preconditions
+import com.mengcraft.simpleorm.ORM
+import org.bukkit.Bukkit
+import org.bukkit.Location
 
-        redisWrapper.publish("my_channel", "my_message");
-    }
-}
+Location loc = new Location(Bukkit.getWorld("world"), 0, 0, 0)
+
+Map<String, Object> map = ORM.serialize(loc)
+Location loc2 = ORM.deserialize(Location.class, map)
+
+Preconditions.checkState(Objects.equals(loc, loc2))
+```
+
+## Async executors
+
+Schedule async task to specific async pool or primary thread.
+
+```jshelllanguage
+import com.mengcraft.simpleorm.ORM;
+
+import java.util.function.Supplier;
+
+ORM.enqueue("pool_name", () -> "any_async_task")
+        .thenComposeAsync(obj -> {
+            // Codes here
+        })
+
+ORM.sync(() -> "any_sync_task")
+        .thenAccept(s -> {
+            // Codes here
+        })
 ```
 
 ## Cluster
