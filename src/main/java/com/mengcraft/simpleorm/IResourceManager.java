@@ -13,6 +13,8 @@ public interface IResourceManager {
 
     void saveResource(@NotNull String filename, @NotNull InputStream contents);
 
+    void saveResource(@NotNull String filename, @NotNull InputStream contents, boolean force);
+
     void saveObject(@NotNull String filename, @NotNull Object obj);
 
     @Nullable InputStream getResource(@NotNull String filename);

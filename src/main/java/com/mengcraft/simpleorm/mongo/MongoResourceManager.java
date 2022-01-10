@@ -45,27 +45,29 @@ public class MongoResourceManager implements IResourceManager {
         InputStream stream = owner.getResource(filename);
         Objects.requireNonNull(stream, String.format("The embedded resource %s cannot be found in %s", filename, owner.getName()));
 
-        GridFSDBFile obj = fs.findOne(filename);
-        if (obj == null) {
-            fs.createFile(stream, filename).save();
-        } else if (force) {
-            fs.remove(filename);
-            fs.createFile(stream, filename).save();
-        } else {
-            owner.getLogger().warning(String.format("Could not save %s to file manager because already exists.", filename));
-        }
+        saveResource(filename, stream, force);
     }
 
     @Override
     public void saveResource(@NotNull String filename, @NotNull InputStream contents) {
+        saveResource(filename, contents, false);
+    }
+
+    @Override
+    @SneakyThrows
+    public void saveResource(@NotNull String filename, @NotNull InputStream buf, boolean force) {
         Preconditions.checkArgument(!Utils.isNullOrEmpty(filename));
-        Preconditions.checkNotNull(contents);
+        Preconditions.checkNotNull(buf);
 
         GridFSDBFile obj = fs.findOne(filename);
-        if (obj != null) {
+        if (obj == null) {
+            fs.createFile(buf, filename).save();
+        } else if (force) {
             fs.remove(filename);
+            fs.createFile(buf, filename).save();
+        } else {
+            owner.getLogger().warning(String.format("Could not save %s to file manager because already exists.", filename));
         }
-        fs.createFile(contents, filename).save();
     }
 
     @Override
