@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm;
 
-import com.mengcraft.simpleorm.provider.IHandlerInitializer;
+import com.mengcraft.simpleorm.lib.Utils;
+import lombok.experimental.ExtensionMethod;
 import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -10,14 +11,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @deprecated Use {@link ORM}'s static functions
+ */
+@ExtensionMethod(Utils.class)
 public class EbeanManager {
 
     public static final EbeanManager DEFAULT = new EbeanManager();
-
-    private static final IHandlerInitializer STANDARD_HANDLER_INITIALIZER = new StandardHandlerInitializer();
-    private static String url = "jdbc:mysql://localhost/db";
-    private static String user = "user";
-    private static String password = "passwd";
 
     final Map<String, EbeanHandler> map = new HashMap<>();
 
@@ -29,21 +29,13 @@ public class EbeanManager {
     }
 
     public EbeanHandler getHandler(JavaPlugin plugin, boolean shared) {
-        return getHandler(plugin, shared, STANDARD_HANDLER_INITIALIZER);
-    }
-
-    public EbeanHandler getHandler(JavaPlugin plugin, IHandlerInitializer initializer) {
-        return getHandler(plugin, false, initializer);
-    }
-
-    public EbeanHandler getHandler(JavaPlugin plugin, boolean shared, IHandlerInitializer initializer) {
         if (!ORM.isFullyEnabled()) {
             plugin.getLogger().warning("Try register db handler while ORM not fully enabled(Not depend on or register at onLoad?).");
             Bukkit.getConsoleSender().sendMessage(ChatColor.RED + plugin.getName() + " try register db handler while ORM not fully enabled. This may cause unknown issues.");
         }
         EbeanHandler out = map.get(plugin.getName());
         if (out == null) {
-            map.put(plugin.getName(), out = build(plugin, shared, initializer));
+            map.put(plugin.getName(), out = build(plugin, shared));
         }
         return out;
     }
@@ -56,42 +48,14 @@ public class EbeanManager {
         return map.get(name);
     }
 
-    private EbeanHandler build(JavaPlugin plugin, boolean shared, IHandlerInitializer initializer) {
-        if (shared || !initializer.isEnabled(plugin)) {
-            return new EbeanHandler(plugin, true, ORM.getSharedDs());
-        }
-
+    private EbeanHandler build(JavaPlugin plugin, boolean shared) {
         EbeanHandler handler = new EbeanHandler(plugin, true, null);
-        initializer.initialize(plugin, handler);
+        initialize(plugin, handler);
         return handler;
     }
 
     static void unHandle(EbeanHandler db) {
         DEFAULT.map.remove(db.getPlugin().getName(), db);
-    }
-
-    public static void setUrl(String url) {
-        EbeanManager.url = url;
-    }
-
-    public static void setUser(String user) {
-        EbeanManager.user = user;
-    }
-
-    public static void setPassword(String password) {
-        EbeanManager.password = password;
-    }
-
-    public static String getUrl() {
-        return url;
-    }
-
-    public static String getUser() {
-        return user;
-    }
-
-    public static String getPassword() {
-        return password;
     }
 
     @Deprecated
@@ -102,38 +66,20 @@ public class EbeanManager {
         }
     }
 
-    private static class StandardHandlerInitializer implements IHandlerInitializer {
-
-        @Override
-        public void initialize(Plugin plugin, EbeanHandler handler) {
-            String url = plugin.getConfig().getString("dataSource.url");
-            String user = plugin.getConfig().getString("dataSource.user");
-            if (user == null) {
-                user = plugin.getConfig().getString("dataSource.userName");
-            }
-            String password = plugin.getConfig().getString("dataSource.password");
-
-            if (url == null) {
-                plugin.getConfig().set("dataSource.disabled", false);
-                plugin.getConfig().set("dataSource.url", url = EbeanManager.getUrl());
-                plugin.getConfig().set("dataSource.user", user = EbeanManager.getUser());
-                plugin.getConfig().set("dataSource.password", password = EbeanManager.getPassword());
-                plugin.saveConfig();
-            } else {
-                String driver = plugin.getConfig().getString("dataSource.driver");
-                if (driver != null) {
-                    handler.setDriver(driver);
-                }
-            }
-
-            handler.setUrl(url);
-            handler.setUser(user);
-            handler.setPassword(password);
+    public void initialize(Plugin plugin, EbeanHandler handler) {
+        String url = plugin.getConfig().getString("dataSource.url");
+        String user = plugin.getConfig().getString("dataSource.user");
+        String password = plugin.getConfig().getString("dataSource.password");
+        if (url.isNullOrEmpty() || user.isNullOrEmpty() || password.isNullOrEmpty()) {
+            return;
         }
 
-        @Override
-        public boolean isEnabled(Plugin plugin) {
-            return !plugin.getConfig().getBoolean("dataSource.disabled", false);
+        handler.setUrl(url);
+        handler.setUser(user);
+        handler.setPassword(password);
+        String driver = plugin.getConfig().getString("dataSource.driver");
+        if (driver != null) {
+            handler.setDriver(driver);
         }
     }
 }

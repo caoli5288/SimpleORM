@@ -10,13 +10,13 @@ import com.avaje.ebeaninternal.api.SpiEbeanServer;
 import com.avaje.ebeaninternal.server.core.DefaultServer;
 import com.avaje.ebeaninternal.server.ddl.DdlGenerator;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 import com.mengcraft.simpleorm.annotation.Index;
-import com.mengcraft.simpleorm.driver.IDatabaseDriver;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.ExtensionMethod;
 import lombok.val;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -36,21 +36,18 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 @EqualsAndHashCode(of = "id")
+@ExtensionMethod(Utils.class)
 public class EbeanHandler {
 
     private final Set<Class<?>> mapping = new HashSet<>();
     private final JavaPlugin plugin;
     private final boolean managed;
     private final UUID id = UUID.randomUUID();
-
+    @Getter
+    private final DataSourceOptions options = new DataSourceOptions();
     private DataSource dataSource;
-    private Map<String, String> properties;
     private String heartbeat;
     private String name;
-    private String driver;
-    private String url;
-    private String user;
-    private String password;
     private LogLevel loggingLevel = LogLevel.NONE;
 
     private int coreSize;
@@ -72,7 +69,7 @@ public class EbeanHandler {
 
     @Override
     public String toString() {
-        return "ORM(" + name + ", " + url + ", " + user + ", ready = " + !(server == null) + ")";
+        return "ORM(" + name + ", " + options + ", ready = " + !(server == null) + ")";
     }
 
     /**
@@ -198,33 +195,19 @@ public class EbeanHandler {
     }
 
     /**
-     * @deprecated Internal only for  {@link DataSourceProvider}
+     * @deprecated Internal only
      */
     DataSource newDataSource() {
-        HikariDataSource source = new HikariDataSource();
-        source.setPoolName(name);
-        source.setConnectionTimeout(5_000);
-        source.setJdbcUrl(IDatabaseDriver.filter(url));
-        source.setUsername(user);
-        source.setPassword(password);
-        source.setAutoCommit(false);
-        source.setMinimumIdle(Math.max(1, coreSize));
-        source.setMaximumPoolSize(maxSize);
-        if (!Utils.isNullOrEmpty(driver)) {
-            source.setDriverClassName(driver);
-        }
+        HikariDataSource ds = options.asDataSource(name);
+        ds.setMinimumIdle(Math.max(1, coreSize));
+        ds.setMaximumPoolSize(maxSize);
         if (!Utils.isNullOrEmpty(heartbeat)) {
-            source.setConnectionTestQuery(heartbeat);
+            ds.setConnectionTestQuery(heartbeat);
         }
         if (isolationLevel != null) {
-            source.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
+            ds.setTransactionIsolation("TRANSACTION_" + isolationLevel.name());
         }
-        if (properties != null) {
-            for (val kv : properties.entrySet()) {
-                source.addDataSourceProperty(kv.getKey(), kv.getValue());
-            }
-        }
-        return source;
+        return ds;
     }
 
     public void initialize() throws DatabaseException {
@@ -277,10 +260,7 @@ public class EbeanHandler {
 
     public void setJdbcProperty(String key, String value) {
         Preconditions.checkState(isNotInitialized(), "Set property after initialized");
-        if (properties == null) {
-            properties = Maps.newHashMap();
-        }
-        properties.put(key, value);
+        options.getProperties().put(key, value);
     }
 
     public void save(Object in) {
@@ -308,22 +288,22 @@ public class EbeanHandler {
     }
 
     public void setUrl(String url) {
-        this.url = url;
+        options.setJdbcUrl(url);
     }
 
     /**
      * @deprecated {@code setUser}
      */
     public void setUserName(String user) {
-        this.user = user;
+        options.setUsername(user);
     }
 
     public void setUser(String user) {
-        this.user = user;
+        options.setUsername(user);
     }
 
     public void setPassword(String password) {
-        this.password = password;
+        options.setPassword(password);
     }
 
     public EbeanServer getServer() {
@@ -333,7 +313,7 @@ public class EbeanHandler {
 
     @Deprecated
     public void setDriver(String driver) {
-        this.driver = driver;
+        options.setDriver(driver);
     }
 
     public boolean isInitialized() {

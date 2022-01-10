@@ -6,7 +6,6 @@ import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.MavenLibs;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IDataSourceProvider;
-import com.mengcraft.simpleorm.provider.IHandlerInitializer;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisProviders;
 import com.mengcraft.simpleorm.serializable.SerializableTypes;
@@ -42,7 +41,7 @@ public class ORM extends JavaPlugin {
     private static MongoWrapper globalMongoWrapper;
     private static volatile DataSource sharedDs;
     static ORM plugin;
-    private static IDataSourceProvider dataSourceProvider = new DataSourceProvider();
+    private static IDataSourceProvider dataSourceProvider;
     @Getter
     private static FluxWorkers workers;
 
@@ -51,10 +50,7 @@ public class ORM extends JavaPlugin {
         plugin = this;
         loadLibrary(this);
         saveDefaultConfig();
-
-        EbeanManager.setUrl(getConfig().getString("dataSource.url", "jdbc:mysql://localhost/db"));
-        EbeanManager.setUser(getConfig().getString("dataSource.user", "root"));
-        EbeanManager.setPassword(getConfig().getString("dataSource.password", "wowsuchpassword"));
+        dataSourceProvider = Utils.let(new DataSourceManager(), obj -> obj.load(this));
 
         getServer().getServicesManager().register(EbeanManager.class,
                 EbeanManager.DEFAULT,
@@ -147,10 +143,6 @@ public class ORM extends JavaPlugin {
 
     public static EbeanHandler getDataHandler(JavaPlugin plugin, boolean shared) {
         return EbeanManager.DEFAULT.getHandler(plugin, shared);
-    }
-
-    public static EbeanHandler getDataHandler(JavaPlugin plugin, IHandlerInitializer initializer) {
-        return EbeanManager.DEFAULT.getHandler(plugin, initializer);
     }
 
     public static GenericTrigger getGenericTrigger() {

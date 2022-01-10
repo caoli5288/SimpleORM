@@ -1,0 +1,6 @@
+jdbcUrl: jdbc:mysql://localhost/mc
+username: mc
+password: hahaha
+maximumPoolSize: 10
+properties: {}
+aliases: []

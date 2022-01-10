@@ -16,6 +16,8 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
@@ -135,5 +137,13 @@ public class Utils {
     @SneakyThrows
     public static String md5(File f) {
         return Hashing.md5().hashBytes(Files.toByteArray(f)).toString();
+    }
+
+    public static boolean isNullOrEmpty(Collection<?> c) {
+        return c == null || c.isEmpty();
+    }
+
+    public static boolean isNullOrEmpty(Map<?, ?> map) {
+        return map == null || map.isEmpty();
     }
 }
