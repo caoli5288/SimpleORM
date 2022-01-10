@@ -37,24 +37,21 @@ public class DataSourceManager implements IDataSourceProvider {
 
     @SneakyThrows
     public void load(ORM orm) {
+        // save default config
+        orm.saveResource("datasources.d/default.yml", false);
         // check compatible first
         FileConfiguration ormConfig = orm.getConfig();
         String dsu = ormConfig.getString("dataSource.url");
         if (!dsu.isNullOrEmpty()) {
-            File df = new File(orm.getDataFolder(), "datasources.d/default.yml");
-            if (!df.exists()) {// save file
-                DataSourceOptions def = new DataSourceOptions();
-                def.setJdbcUrl(dsu);
-                def.setUsername(ormConfig.getString("dataSource.user"));
-                def.setPassword(ormConfig.getString("dataSource.password"));
-                def.setMaximumPoolSize(10);
-                Utils.YAML.dump(ORM.serialize(def), Files.newWriter(df, StandardCharsets.UTF_8));
-                ormConfig.set("dataSource", null);
-                orm.saveConfig();
-            }
+            DataSourceOptions def = new DataSourceOptions();
+            def.setJdbcUrl(dsu);
+            def.setUsername(ormConfig.getString("dataSource.user"));
+            def.setPassword(ormConfig.getString("dataSource.password"));
+            def.setMaximumPoolSize(10);
+            Utils.YAML.dump(ORM.serialize(def), Files.newWriter(new File(orm.getDataFolder(), "datasources.d/default.yml"), StandardCharsets.UTF_8));
+            ormConfig.set("dataSource", null);
+            orm.saveConfig();
         }
-        // save default config
-        orm.saveResource("datasources.d/default.yml", false);
         // loads
         File[] files = new File(orm.getDataFolder(), "datasources.d").listFiles();
         Objects.requireNonNull(files);// ?
