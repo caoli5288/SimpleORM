@@ -1,0 +1,20 @@
+name: publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          version: '11'
+      - run: mvn --batch-mode package
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: target/SimpleORM.jar
