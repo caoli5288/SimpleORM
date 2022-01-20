@@ -3,9 +3,9 @@ package com.mengcraft.simpleorm.redis;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisSentinelPool;
 
 import java.net.URI;
@@ -16,7 +16,7 @@ import java.util.Set;
 public class RedisProviders {
 
     public static IRedisProvider of(String sentinel, String url, int conn, String password) {
-        GenericObjectPoolConfig<?> config = new GenericObjectPoolConfig<>();
+        JedisPoolConfig config = new JedisPoolConfig();
         if (conn >= 1) {
             config.setMaxTotal(conn);
         }
