@@ -72,7 +72,7 @@ public class ORM extends JavaPlugin {
         try {
             Class.forName("redis.clients.jedis.Jedis");
         } catch (ClassNotFoundException e) {
-            MavenLibs.of("redis.clients:jedis:3.3.0").load();
+            MavenLibs.of("redis.clients:jedis:3.8.0").load();
         }
         plugin.getLogger().info("ORM lib load okay!");
     }
