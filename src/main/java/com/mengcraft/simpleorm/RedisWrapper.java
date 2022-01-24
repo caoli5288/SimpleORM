@@ -232,7 +232,7 @@ public class RedisWrapper implements Closeable {
 
         private final Multimap<String, Consumer<byte[]>> consumers = HashMultimap.create();
         private final Executor executor;
-        private boolean receiving;
+        private volatile boolean receiving;
 
          synchronized void addSubscriber(String channel, Consumer<byte[]> consumer) {
             if (receiving && !consumers.containsKey(channel)) {
@@ -251,6 +251,7 @@ public class RedisWrapper implements Closeable {
             return consumers.isEmpty();
         }
 
+        @Override
         public void onMessage(byte[] channel, byte[] message) {
             Collection<Consumer<byte[]>> allConsumer = consumers.get(new String(channel, StandardCharsets.UTF_8));
             if (allConsumer.isEmpty()) {
@@ -269,22 +270,22 @@ public class RedisWrapper implements Closeable {
         void execute() {
             executor.execute(() -> {
                 while (!consumers.isEmpty()) {
-                    Jedis client = resources.getResource();
-                    client.subscribe(this, new byte[0]);// hacked
-                    // then set this state to true
-                    synchronized (this) {
-                        receiving = true;
-                        for (String s : consumers.keySet()) {
-                            subscribe(s.getBytes(StandardCharsets.UTF_8));
+                    try (Jedis client = Utils.cloneJedis(resources.getResource())) {
+                        // then set this state to true
+                        synchronized (this) {
+                            receiving = true;
+                            client.subscribe(this, new byte[0]);// hacked
+                            for (String s : consumers.keySet()) {
+                                subscribe(s.getBytes(StandardCharsets.UTF_8));
+                            }
                         }
-                    }
-                    try {
                         exec();
                     } catch (Exception e) {
                         e.printStackTrace();
                     } finally {
-                        receiving = false;
-                        client.close();
+                        synchronized (this) {
+                            receiving = false;
+                        }
                     }
                 }
             });

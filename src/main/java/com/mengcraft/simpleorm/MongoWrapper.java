@@ -9,6 +9,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoOptions;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.gridfs.GridFS;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,8 @@ public class MongoWrapper implements Closeable {
     @SneakyThrows
     MongoWrapper(MongoClientURI url) {
         client = new MongoClient(url);
+        MongoOptions options = client.getMongoOptions();
+        options.setSocketKeepAlive(true);// force keep-alive
     }
 
     @Override
