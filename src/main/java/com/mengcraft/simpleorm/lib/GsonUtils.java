@@ -18,7 +18,6 @@ import com.mengcraft.simpleorm.serializable.CustomTypeAdapter;
 import com.mengcraft.simpleorm.serializable.GsonDeserializer;
 import com.mengcraft.simpleorm.serializable.IDeserializer;
 import com.mengcraft.simpleorm.serializable.SerializableTypes;
-import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
@@ -68,7 +67,6 @@ public class GsonUtils {
     public static Gson createJsonInBuk(FieldNamingPolicy policy) {
         GsonBuilder b = new GsonBuilder();
         b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
-        b.registerTypeAdapter(ScriptObjectMirror.class, new ScriptObjectSerializer());
         // jsr310s
         b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
         b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
@@ -78,17 +76,6 @@ public class GsonUtils {
             b.setFieldNamingPolicy(policy);
         }
         return b.create();
-    }
-
-    public static class ScriptObjectSerializer implements JsonSerializer<ScriptObjectMirror> {
-
-        @Override
-        public JsonElement serialize(ScriptObjectMirror obj, Type t, JsonSerializationContext ctx) {
-            if (obj.isArray()) {
-                return ctx.serialize(obj.values());
-            }
-            return ctx.serialize(obj, Map.class);
-        }
     }
 
     public static class CustomSerializer implements JsonSerializer<ConfigurationSerializable>, JsonDeserializer<ConfigurationSerializable> {
