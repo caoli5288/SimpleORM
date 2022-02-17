@@ -21,6 +21,7 @@ import lombok.val;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import javax.persistence.Entity;
 import javax.sql.DataSource;
@@ -56,15 +57,14 @@ public class EbeanHandler {
     private IsolationLevel isolationLevel;
     private EbeanServer server;
 
-    EbeanHandler(JavaPlugin plugin, boolean managed, DataSource dataSource) {
+    EbeanHandler(JavaPlugin plugin, boolean managed) {
         name = plugin.getName() + '@' + id;
         this.plugin = plugin;
         this.managed = managed;
-        this.dataSource = dataSource;
     }
 
     public EbeanHandler(JavaPlugin plugin) {
-        this(plugin, false, null);
+        this(plugin, false);
     }
 
     @Override
@@ -368,8 +368,8 @@ public class EbeanHandler {
         this.heartbeat = heartbeat;
     }
 
+    @Nullable
     public DataSource getDataSource() {
-        Preconditions.checkNotNull(dataSource, "dataSource not initialized");
         return dataSource;
     }
 

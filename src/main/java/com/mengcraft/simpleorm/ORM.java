@@ -160,7 +160,7 @@ public class ORM extends JavaPlugin {
         if (sharedDs == null) {
             synchronized (ORM.class) {
                 if (sharedDs == null) {
-                    sharedDs = newSource();
+                    sharedDs = getDataSourceProvider().getDataSource(getDataHandler(plugin));
                 }
             }
         }
@@ -172,16 +172,8 @@ public class ORM extends JavaPlugin {
         ORM.sharedDs = sharedDs;
     }
 
-    private static DataSource newSource() {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setPoolName("simple_shared");
-        ds.setJdbcUrl(plugin.getConfig().getString("dataSource.url"));
-        ds.setUsername(plugin.getConfig().getString("dataSource.user"));
-        ds.setPassword(plugin.getConfig().getString("dataSource.password"));
-//        ds.setAutoCommit(false);
-        ds.setMinimumIdle(1);
-        ds.setMaximumPoolSize(getMaximumSize());
-        return ds;
+    public static DataSource getDataSource(JavaPlugin from) {
+        return getDataSourceProvider().getDataSource(getDataHandler(from));
     }
 
     public static Map<String, Object> serialize(Object any) {

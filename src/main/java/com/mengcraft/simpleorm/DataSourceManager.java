@@ -22,7 +22,11 @@ public class DataSourceManager implements IDataSourceProvider {
 
     @Override
     public DataSource getDataSource(EbeanHandler handler) {
-        // check build-in first
+        // check exists
+        if (handler.getDataSource() != null) {
+            return handler.getDataSource();
+        }
+        // check build-in options
         if (!handler.getOptions().getJdbcUrl().isNullOrEmpty()) {
             return handler.newDataSource();
         }

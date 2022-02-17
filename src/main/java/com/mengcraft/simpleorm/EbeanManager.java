@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm;
 
+import com.google.common.collect.Maps;
 import com.mengcraft.simpleorm.lib.Utils;
 import lombok.experimental.ExtensionMethod;
 import lombok.val;
@@ -8,7 +9,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,7 +19,7 @@ public class EbeanManager {
 
     public static final EbeanManager DEFAULT = new EbeanManager();
 
-    final Map<String, EbeanHandler> map = new HashMap<>();
+    final Map<String, EbeanHandler> map = Maps.newConcurrentMap();
 
     private EbeanManager() {
     }
@@ -33,11 +33,7 @@ public class EbeanManager {
             plugin.getLogger().warning("Try register db handler while ORM not fully enabled(Not depend on or register at onLoad?).");
             Bukkit.getConsoleSender().sendMessage(ChatColor.RED + plugin.getName() + " try register db handler while ORM not fully enabled. This may cause unknown issues.");
         }
-        EbeanHandler out = map.get(plugin.getName());
-        if (out == null) {
-            map.put(plugin.getName(), out = build(plugin, shared));
-        }
-        return out;
+        return map.computeIfAbsent(plugin.getName(), s -> build(plugin, shared));
     }
 
     /**
@@ -49,7 +45,7 @@ public class EbeanManager {
     }
 
     private EbeanHandler build(JavaPlugin plugin, boolean shared) {
-        EbeanHandler handler = new EbeanHandler(plugin, true, null);
+        EbeanHandler handler = new EbeanHandler(plugin, true);
         initialize(plugin, handler);
         return handler;
     }
