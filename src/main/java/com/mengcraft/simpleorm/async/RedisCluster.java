@@ -1,5 +1,6 @@
 package com.mengcraft.simpleorm.async;
 
+import com.google.common.base.Preconditions;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
@@ -108,8 +109,10 @@ public class RedisCluster implements ICluster {
     @Override
     public CompletableFuture<Handler> spawn(ClusterSystem system, Handler actor) {
         return CompletableFuture.supplyAsync(() -> {
-            ORM.globalRedisWrapper().open(system.getOptions().getRedisDb(),
+            long succ = ORM.globalRedisWrapper().call(system.getOptions().getRedisDb(),
                     jedis -> jedis.sadd(String.format(PATTERN_CAT, cluster, actor.getCategory()), actor.getAddress()));
+            // check result equals 1
+            Preconditions.checkState(succ == 1);
             return actor;
         });
     }

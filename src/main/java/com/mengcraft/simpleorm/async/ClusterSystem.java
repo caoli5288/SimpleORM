@@ -205,7 +205,12 @@ public class ClusterSystem implements Closeable {
                     actor.construct();
                     return actor;
                 }))
-                .thenCompose(actor -> cluster.spawn(this, actor));
+                .thenCompose(actor -> cluster.spawn(this, actor))
+                .thenApply(act -> {
+                    // put in refs
+                    refs.put(act.getAddress(), act);
+                    return act;
+                });
     }
 
     CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor, boolean expose) {
@@ -218,9 +223,13 @@ public class ClusterSystem implements Closeable {
                     return actor;
                 }));
         if (expose) {
-            return f.thenCompose(actor -> cluster.spawn(this, actor));
+            f = f.thenCompose(actor -> cluster.spawn(this, actor));
         }
-        return f;
+        return f.thenApply(act -> {
+            // put in refs
+            refs.put(act.getAddress(), act);
+            return act;
+        });
     }
 
     private CompletableFuture<Handler> ref(Handler supervisor, String category, boolean exposed) {
