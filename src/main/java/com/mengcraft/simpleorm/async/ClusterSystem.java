@@ -135,9 +135,9 @@ public class ClusterSystem implements Closeable {
     }
 
     void receive(Message msg) {
-        Handler receiver = refs.get(msg.getReceiver());
         long fid = msg.getFutureId();
         if (fid == -1) {
+            Handler receiver = refs.get(msg.getReceiver());
             if (Utils.isNullOrClosed(receiver)) {
                 cluster.send(this, receiver.getAddress(), msg.getSender(), new StateWrapper("Closed"), msg.getId());
                 return;
@@ -151,6 +151,7 @@ public class ClusterSystem implements Closeable {
                     });
         } else if (callbacks.containsKey(fid)) {
             CompletableFuture<Object> f = callbacks.remove(fid);
+            Handler receiver = refs.get(msg.getReceiver());
             if (Utils.isNullOrClosed(receiver)) {
                 return;
             }
@@ -203,8 +204,11 @@ public class ClusterSystem implements Closeable {
 
     CompletableFuture<Handler> expose(Handler handler) {
         Preconditions.checkState(!handler.exposed);
-        handler.exposed = true;
-        return cluster.spawn(this, handler);
+        return cluster.spawn(this, handler)
+                .thenApply(ref -> {
+                    ref.exposed = true;
+                    return ref;
+                });
     }
 
     CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor, boolean expose) {
@@ -216,7 +220,7 @@ public class ClusterSystem implements Closeable {
                     return actor;
                 }));
         if (expose) {
-            f = f.thenCompose(actor -> cluster.spawn(this, actor));
+            f = f.thenCompose(this::expose);
         }
         return f;
     }
