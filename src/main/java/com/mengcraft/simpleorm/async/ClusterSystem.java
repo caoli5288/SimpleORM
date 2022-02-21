@@ -198,46 +198,35 @@ public class ClusterSystem implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor) {
-        return ref(null, category, true)
-                .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
-                    actor.setContext(currentThread());
-                    actor.setConstructor(constructor);
-                    actor.construct();
-                    return actor;
-                }))
-                .thenCompose(actor -> cluster.spawn(this, actor))
-                .thenApply(act -> {
-                    // put in refs
-                    refs.put(act.getAddress(), act);
-                    return act;
-                });
+        return spawn(category, constructor, true);
     }
 
-    CompletableFuture<Handler> spawn(Handler supervisor, String category, Consumer<Handler> constructor, boolean expose) {
-        CompletableFuture<Handler> f = ref(supervisor, category, expose)
+    CompletableFuture<Handler> expose(Handler handler) {
+        Preconditions.checkState(!handler.exposed);
+        handler.exposed = true;
+        return cluster.spawn(this, handler);
+    }
+
+    CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor, boolean expose) {
+        CompletableFuture<Handler> f = ref(category, expose)
                 .thenCompose(actor -> Utils.enqueue(actor.executor, () -> {
                     actor.setContext(currentThread());
                     actor.setConstructor(constructor);
                     actor.construct();
-                    actor.getSupervisor().addChild(actor);
                     return actor;
                 }));
         if (expose) {
             f = f.thenCompose(actor -> cluster.spawn(this, actor));
         }
-        return f.thenApply(act -> {
-            // put in refs
-            refs.put(act.getAddress(), act);
-            return act;
-        });
+        return f;
     }
 
-    private CompletableFuture<Handler> ref(Handler supervisor, String category, boolean exposed) {
+    private CompletableFuture<Handler> ref(String category, boolean exposed) {
         // ask next random name from cluster instance
         return cluster.randomName(this, exposed)
                 .thenApply(s -> {
                     String address = name + ':' + s;
-                    Handler ref = new Handler(this, supervisor, category, address, exposed);
+                    Handler ref = new Handler(this, category, address);
                     refs.put(ref.getAddress(), ref);
                     return ref;
                 });

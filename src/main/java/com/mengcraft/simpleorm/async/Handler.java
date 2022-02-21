@@ -33,23 +33,20 @@ public class Handler implements Closeable {
     @Getter(AccessLevel.NONE)
     final Executor executor;
     private final ClusterSystem system;
-    private final Handler supervisor;
+    private Handler supervisor;
     private final String category;
     private final String address;
-    @Getter(AccessLevel.NONE)
-    final boolean exposed;
+    boolean exposed;
     private volatile boolean open = true;
     @Setter(AccessLevel.PACKAGE)
     private Thread context;
     private Consumer<Handler> constructor;
     private BiConsumer<Handler, Throwable> exceptionally;
 
-    Handler(ClusterSystem system, Handler supervisor, String category, String address, boolean exposed) {
+    Handler(ClusterSystem system, String category, String address) {
         this.system = system;
-        this.supervisor = supervisor;
         this.category = category;
         this.address = address;
-        this.exposed = exposed;
         executor = ORM.getWorkers().of();
     }
 
@@ -64,6 +61,10 @@ public class Handler implements Closeable {
     public <T> Handler map(Class<T> cls, BiFunction<String, T, Object> callback) {
         handlers.put(cls, (BiFunction<String, Object, Object>) callback);
         return this;
+    }
+
+    public CompletableFuture<Handler> expose() {
+        return system.expose(this);
     }
 
     /**
@@ -167,13 +168,18 @@ public class Handler implements Closeable {
     }
 
     public CompletableFuture<Handler> spawn(String category, Consumer<Handler> constructor, boolean expose) {
-        return system.spawn(this, category, constructor, expose);
+        return system.spawn(category, constructor, expose)
+                .thenCompose(ref -> Utils.enqueue(ref.executor(), () -> {
+                    addChild(ref);
+                    return ref;
+                }));
     }
 
     /**
      * Called in child context
      */
     void addChild(Handler ref) {
+        ref.supervisor = this;
         children.put(ref.getAddress(), ref);
     }
 
