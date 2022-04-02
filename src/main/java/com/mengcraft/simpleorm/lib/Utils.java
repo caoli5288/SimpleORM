@@ -8,7 +8,6 @@ import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.yaml.snakeyaml.Yaml;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisFactory;
 import redis.clients.jedis.util.Pool;
 
 import javax.persistence.Table;
@@ -157,10 +156,16 @@ public class Utils {
 
     @SneakyThrows
     public static Jedis cloneJedis(Jedis jedis) {
-        Object ds = JEDIS_DATA_SOURCE.get(jedis);
-        Objects.requireNonNull(ds);// TODO other wises
-        GenericObjectPool<?> pool = (GenericObjectPool<?>) POOL_INTERNAL.get(ds);
-        JedisFactory factory = (JedisFactory) pool.getFactory();
-        return factory.makeObject().getObject();
+        try {
+            Object ds = JEDIS_DATA_SOURCE.get(jedis);
+            Objects.requireNonNull(ds);// TODO other wises
+            GenericObjectPool<?> pool = (GenericObjectPool<?>) POOL_INTERNAL.get(ds);
+            Jedis obj = (Jedis) pool.getFactory().makeObject().getObject();
+            jedis.close();
+            return obj;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return jedis;
     }
 }

@@ -70,7 +70,8 @@ public class ORM extends JavaPlugin {
             MavenLibs.of("com.zaxxer:HikariCP:4.0.3").load();
         }
         try {
-            Class.forName("redis.clients.jedis.Jedis");
+            Class<?> cls = Class.forName("redis.clients.jedis.Jedis");
+            plugin.getLogger().info(String.format("Jedis URL{%s}", cls.getProtectionDomain().getCodeSource().getLocation()));
         } catch (ClassNotFoundException e) {
             MavenLibs.of("redis.clients:jedis:3.8.0").load();
         }
