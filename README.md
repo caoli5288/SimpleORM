@@ -185,3 +185,16 @@ ClusterSystem.create("sample")// join(or create) named cluster and return its fu
             })
         })
 ```
+
+## Flow
+
+```groovy
+import com.mengcraft.simpleorm.Flowable
+
+Flowable.of()
+        .async()
+        .complete({ "hello" })****
+        .orElse("")
+        .sync()
+        .then({ println it })
+```
