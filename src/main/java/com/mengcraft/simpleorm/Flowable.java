@@ -1,7 +1,6 @@
 package com.mengcraft.simpleorm;
 
 import com.google.common.util.concurrent.MoreExecutors;
-import com.mengcraft.simpleorm.lib.Utils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -77,6 +76,14 @@ public class Flowable<T> {
     }
 
     public static <T> Flowable<T> of() {
-        return new Flowable<>(CompletableFuture.completedFuture(null), MoreExecutors.directExecutor());
+        return of(null);
+    }
+
+    public static <T> Flowable<T> of(T value) {
+        return of(CompletableFuture.completedFuture(value));
+    }
+
+    public static <T> Flowable<T> of(CompletableFuture<T> future) {
+        return new Flowable<>(future, MoreExecutors.directExecutor());
     }
 }

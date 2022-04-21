@@ -16,14 +16,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class L2Cache implements Closeable {
+public class SimpleCache implements Closeable {
 
     public static final String PREFIX = "simple:l2:";
     private final RedisWrapper redis;
     private final Options options;
     private final Map<String, CompletableFuture<String>> map;
 
-    public L2Cache(RedisWrapper redis, Options options) {
+    public SimpleCache(RedisWrapper redis, Options options) {
         this.redis = redis;
         this.options = options;
         map = CacheBuilder.newBuilder()

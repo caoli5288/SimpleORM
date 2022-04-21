@@ -8,6 +8,7 @@ import com.mengcraft.simpleorm.lib.Utils;
 import com.mengcraft.simpleorm.provider.IRedisProvider;
 import com.mengcraft.simpleorm.redis.RedisLiveObjectBucket;
 import com.mengcraft.simpleorm.redis.RedisMessageTopic;
+import com.mengcraft.simpleorm.redis.SimpleCache;
 import lombok.Cleanup;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -222,6 +223,10 @@ public class RedisWrapper implements Closeable {
 
     public RedisLiveObjectBucket getLiveObjectBucket(String bucket) {
         return new RedisLiveObjectBucket(this, bucket);
+    }
+
+    public SimpleCache openCache(SimpleCache.Options options) {
+        return new SimpleCache(this, options);
     }
 
     private static final Method METHOD_PUB_SUB_process = Utils.getAccessibleMethod(BinaryJedisPubSub.class, "process", Client.class);
