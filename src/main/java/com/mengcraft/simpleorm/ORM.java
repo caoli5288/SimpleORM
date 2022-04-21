@@ -50,6 +50,7 @@ public class ORM extends JavaPlugin {
         plugin = this;
         loadLibrary(this);
         saveDefaultConfig();
+        workers = new FluxWorkers(getConfig().getInt("cpus", 8));
         dataSourceProvider = Utils.let(new DataSourceManager(), obj -> obj.load(this));
 
         getServer().getServicesManager().register(EbeanManager.class,
@@ -82,7 +83,6 @@ public class ORM extends JavaPlugin {
     @SneakyThrows
     public void onEnable() {
         new MetricsLite(this);
-        workers = new FluxWorkers(getConfig().getInt("cpus", 8));
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
         if (nil(globalRedisWrapper)) {
             String redisUrl = getConfig().getString("redis.url");
@@ -281,5 +281,17 @@ public class ORM extends JavaPlugin {
 
     public static <T> CompletableFuture<T> sync(Supplier<T> supplier) {
         return Utils.enqueue(workers.ofServer(), supplier);
+    }
+
+    public static <T> SimpleFuture<T> future() {
+        return SimpleFuture.of();
+    }
+
+    public static <T> SimpleFuture<T> future(T value) {
+        return SimpleFuture.of(value);
+    }
+
+    public static <T> SimpleFuture<T> future(CompletableFuture<T> future) {
+        return SimpleFuture.of(future);
     }
 }

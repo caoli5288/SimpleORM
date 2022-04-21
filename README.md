@@ -186,15 +186,46 @@ ClusterSystem.create("sample")// join(or create) named cluster and return its fu
         })
 ```
 
-## Flowable
+## Future flows
 
 ```groovy
-import com.mengcraft.simpleorm.Flowable
+import com.mengcraft.simpleorm.SimpleFuture
 
-Flowable.of()
+SimpleFuture.of()
         .async()
-        .complete({ "hello" })
+        .then({ "hello" })
         .orElse("")
         .sync()
-        .then({ println it })
+        .complete({ println it })
+```
+
+## Distributed L2 caches
+
+```groovy
+import com.mengcraft.simpleorm.ORM
+import com.mengcraft.simpleorm.redis.SimpleCache
+
+def static customCalculator(String key) {
+    "hello, " + key
+}
+
+def cache = ORM.globalRedisWrapper().openCache(SimpleCache.Options.builder()
+        .name("sample")
+        .calculator(this::customCalculator)
+        .clustered(true)
+        .expire(300)
+        .expire2(3600)
+        .build())
+
+cache.get("key")
+        .thenAccept({
+            cache.set("key", it)
+        })
+
+cache.expire("key")
+
+if (cache.isCached("key2")) {
+    cache.expire2("key2")
+}
+
 ```
