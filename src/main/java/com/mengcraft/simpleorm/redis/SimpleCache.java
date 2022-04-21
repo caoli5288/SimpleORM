@@ -11,6 +11,7 @@ import redis.clients.jedis.params.SetParams;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -21,6 +22,7 @@ public class SimpleCache implements Closeable {
     public static final String PREFIX = "simple:l2:";
     private final RedisWrapper redis;
     private final Options options;
+    private final String channel;
     private final Map<String, CompletableFuture<String>> map;
 
     public SimpleCache(RedisWrapper redis, Options options) {
@@ -30,9 +32,19 @@ public class SimpleCache implements Closeable {
                 .expireAfterWrite(options.getExpire(), TimeUnit.SECONDS)
                 .<String, CompletableFuture<String>>build()
                 .asMap();
+        channel = PREFIX + options.getName();
         if (options.isClustered()) {
-            redis.subscribe(PREFIX + options.getName(), bytes -> expire(new String(bytes)));
+            redis.subscribe(channel, this::msg);
         }
+    }
+
+    private void msg(byte[] bytes) {
+        String msg = new String(bytes, StandardCharsets.UTF_8);
+        String[] split = msg.split(",", 2);
+        if (options.getId().equals(split[0])) {
+            return;
+        }
+        expire(split[1]);
     }
 
     public boolean isCached(@NotNull String key) {
@@ -46,28 +58,35 @@ public class SimpleCache implements Closeable {
 
     private CompletableFuture<String> get0(String key) {
         return ORM.enqueue(() -> {
-            String key2 = asRedisKey(key);
-            String value = redis.getString(key2);
+            String rKey = asRedisKey(key);
+            String value = redis.getString(rKey);
             if (value == null) {
                 value = options.getCalculator().apply(key);
                 Preconditions.checkNotNull(value, "value is null");
-                value = set0(key2, value);
+                value = set0(rKey, value, key);
             }
             return value;
         });
     }
 
-    private String set0(String key, String value) {
-        String call = redis.call(jedis -> jedis.set(key, value, SetParams.setParams().nx().ex(options.getExpire2())));
-        if (!"OK".equals(call)) {
-            return redis.getString(key);
+    private String set0(String rKey, String value, String key) {
+        String call = redis.call(jedis -> jedis.set(rKey, value, SetParams.setParams().nx().ex(options.getExpire2())));
+        if ("OK".equals(call)) {
+            notify(key);
+            return value;
         }
-        return value;
+        return redis.getString(rKey);
+    }
+
+    private void notify(String key) {
+        if (options.isClustered()) {
+            redis.publish(channel, options.getId() + "," + key);
+        }
     }
 
     @NotNull
     private String asRedisKey(String key) {
-        return PREFIX + options.getName() + ":" + key;
+        return channel + ":" + key;
     }
 
     public void expire(@NotNull String key) {
@@ -78,17 +97,21 @@ public class SimpleCache implements Closeable {
     public CompletableFuture<Boolean> expire2(@NotNull String key) {
         return ORM.enqueue(() -> {
             long call = redis.call(jedis -> jedis.del(asRedisKey(key)));
+            if (call != 0) {
+                notify(key);
+            }
             map.remove(key);
             return call > 0;
         });
     }
 
     public CompletableFuture<String> set(@NotNull String key, @NotNull String value) {
-        return map.compute(key, (s, old) -> ORM.enqueue(() -> set2(asRedisKey(key), value)));
+        return map.compute(key, (s, old) -> ORM.enqueue(() -> set2(key, value)));
     }
 
     private String set2(String key, String value) {
-        redis.open(jedis -> jedis.set(key, value, SetParams.setParams().ex(options.getExpire2())));
+        redis.open(jedis -> jedis.set(asRedisKey(key), value, SetParams.setParams().ex(options.getExpire2())));
+        notify(key);
         return value;
     }
 
@@ -104,6 +127,7 @@ public class SimpleCache implements Closeable {
     @Data
     public static class Options {
 
+        private final String id = String.valueOf(Math.random());
         private final String name;
         private final long expire;
         private final long expire2;
