@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -67,6 +68,7 @@ public class GsonUtils {
     public static Gson createJsonInBuk(FieldNamingPolicy policy) {
         GsonBuilder b = new GsonBuilder();
         b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
+        b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(Collection.class, new MultilineTextDeserializer()));
         // jsr310s
         b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
         b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
