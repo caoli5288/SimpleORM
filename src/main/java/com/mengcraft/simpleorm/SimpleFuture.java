@@ -37,39 +37,59 @@ public class SimpleFuture<T> {
         return this;
     }
 
+    public SimpleFuture<T> thenRun(Runnable runnable) {
+        return complete(runnable);
+    }
+
+    public SimpleFuture<T> thenRun(Consumer<T> consumer) {
+        return complete(consumer);
+    }
+
+    public SimpleFuture<T> exception(Consumer<Throwable> consumer) {
+        return complete((__, e) -> consumer.accept(e));
+    }
+
     public SimpleFuture<T> complete(Runnable runnable) {
-        future = (CompletableFuture<T>) future.thenRunAsync(runnable, executor);
+        future = (CompletableFuture<T>) future.thenRunAsync(runnable, executor());
         return this;
     }
 
     public SimpleFuture<T> complete(Consumer<T> consumer) {
-        future = (CompletableFuture<T>) future.thenAcceptAsync(consumer, executor);
+        future = (CompletableFuture<T>) future.thenAcceptAsync(consumer, executor());
         return this;
     }
 
     public SimpleFuture<T> complete(BiConsumer<T, Throwable> consumer) {
-        future = future.whenCompleteAsync(consumer, executor);
+        future = future.whenCompleteAsync(consumer, executor());
         return this;
     }
 
     public <R> SimpleFuture<R> then(Supplier<R> supplier) {
-        future = (CompletableFuture<T>) future.thenApplyAsync(s -> supplier.get(), executor);
+        future = (CompletableFuture<T>) future.thenApplyAsync(s -> supplier.get(), executor());
         return (SimpleFuture<R>) this;
     }
 
     public <R> SimpleFuture<R> then(Function<T, R> function) {
-        future = (CompletableFuture<T>) future.thenApplyAsync(function, executor);
+        future = (CompletableFuture<T>) future.thenApplyAsync(function, executor());
         return (SimpleFuture<R>) this;
     }
 
     public <U, R> SimpleFuture<R> thenCombine(SimpleFuture<U> composite, BiFunction<T, U, R> function) {
-        future = (CompletableFuture<T>) future.thenCombineAsync(composite.future(), function, executor);
+        future = (CompletableFuture<T>) future.thenCombineAsync(composite.future(), function, executor());
         return (SimpleFuture<R>) this;
     }
 
     public <R> SimpleFuture<R> thenCompose(Function<T, SimpleFuture<R>> function) {
-        future = (CompletableFuture<T>) future.thenComposeAsync(s -> function.apply(s).future(), executor);
+        future = (CompletableFuture<T>) future.thenComposeAsync(s -> function.apply(s).future(), executor());
         return (SimpleFuture<R>) this;
+    }
+
+    private Executor executor() {
+        Executor executor = this.executor;
+        if (executor != MoreExecutors.directExecutor()) {
+            this.executor = MoreExecutors.directExecutor();
+        }
+        return executor;
     }
 
     public SimpleFuture<T> orElse(T value) {// orCompose
