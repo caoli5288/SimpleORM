@@ -25,7 +25,7 @@ public class FluxWorkers implements Executor, Closeable {
         this.size = size;
         executors = Lists.newArrayListWithCapacity(size);
         ThreadFactory factory = new ThreadFactoryBuilder()
-                .setNameFormat("SimpleORM/FancyWorkers/%s")
+                .setNameFormat("ORM-Workers-%s")
                 .build();
         for (int i = 0; i < size; i++) {
             executors.add(Executors.newSingleThreadExecutor(factory));

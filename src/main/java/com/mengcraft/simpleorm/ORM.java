@@ -282,16 +282,4 @@ public class ORM extends JavaPlugin {
     public static <T> CompletableFuture<T> sync(Supplier<T> supplier) {
         return Utils.enqueue(workers.ofServer(), supplier);
     }
-
-    public static <T> SimpleFuture<T> future() {
-        return SimpleFuture.of();
-    }
-
-    public static <T> SimpleFuture<T> future(T value) {
-        return SimpleFuture.of(value);
-    }
-
-    public static <T> SimpleFuture<T> future(CompletableFuture<T> future) {
-        return SimpleFuture.of(future);
-    }
 }

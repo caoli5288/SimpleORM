@@ -163,42 +163,6 @@ ORM.sync(() -> "any_sync_task")
         })
 ```
 
-## Cluster
-
-```groovy
-#!/usr/bin/env groovy
-
-import com.mengcraft.simpleorm.async.ClusterSystem
-
-import java.util.concurrent.CompletableFuture
-import java.util.function.BiConsumer
-
-ClusterSystem.create("sample")// join(or create) named cluster and return its future. 
-        .thenAccept(system -> {
-            system.constructor(self -> {// construct system make it respawn automatic
-                self.spawn("echo", actor -> {
-                    actor.map(String.class, { sender, msg ->
-                        println msg
-                        return msg// just return
-                    })
-                })
-            })
-        })
-```
-
-## Future flows
-
-```groovy
-import com.mengcraft.simpleorm.SimpleFuture
-
-SimpleFuture.of()
-        .async()
-        .then({ "hello" })
-        .orElse("")
-        .sync()
-        .complete({ println it })
-```
-
 ## Distributed L2 caches
 
 ```groovy

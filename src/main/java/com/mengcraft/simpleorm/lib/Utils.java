@@ -3,7 +3,6 @@ package com.mengcraft.simpleorm.lib;
 import com.google.common.hash.Hashing;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
-import com.mengcraft.simpleorm.async.Handler;
 import lombok.SneakyThrows;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.yaml.snakeyaml.Yaml;
@@ -132,10 +131,6 @@ public class Utils {
 
     public static <T> CompletableFuture<T> future() {
         return new CompletableFuture<>();
-    }
-
-    public static boolean isNullOrClosed(Handler ref) {
-        return ref == null || !ref.isOpen();
     }
 
     @SneakyThrows
