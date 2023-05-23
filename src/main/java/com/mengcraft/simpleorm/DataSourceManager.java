@@ -35,6 +35,8 @@ public class DataSourceManager implements IDataSourceProvider {
         if (ds == null) {
             // fallback to default
             ds = poolMap.get("default");
+            // log
+            handler.getPlugin().getLogger().warning("No explicit data source found, use default");
         }
         return ds;
     }

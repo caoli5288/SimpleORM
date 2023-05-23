@@ -51,7 +51,7 @@ public class ORM extends JavaPlugin {
         loadLibrary(this);
         saveDefaultConfig();
         workers = new FluxWorkers(getConfig().getInt("cpus", 8));
-        dataSourceProvider = Utils.let(new DataSourceManager(), obj -> obj.load(this));
+        dataSourceProvider = new DataSourceManager().let(it -> it.load(this));
 
         getServer().getServicesManager().register(EbeanManager.class,
                 EbeanManager.DEFAULT,
