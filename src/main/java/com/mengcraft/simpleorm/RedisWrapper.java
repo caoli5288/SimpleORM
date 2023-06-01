@@ -83,20 +83,14 @@ public class RedisWrapper implements Closeable {
     }
 
     public <T> T call(int database, Function<Jedis, T> function) {
-        Preconditions.checkArgument(database > -1);
         if (database == 0) {
             return call(function);
         }
-        T obj;
-        Jedis jedis = resources.getResource();
-        try {
+        Preconditions.checkArgument(database > 0);
+        try (Jedis jedis = resources.getResource()) {
             jedis.select(database);
-            obj = function.apply(jedis);
-        } finally {
-            jedis.select(0);
-            jedis.close();
+            return function.apply(jedis);
         }
-        return obj;
     }
 
     public void publish(String channel, String message) {
@@ -113,17 +107,13 @@ public class RedisWrapper implements Closeable {
     }
 
     public void open(int database, Consumer<Jedis> consumer) {
-        Preconditions.checkArgument(database > -1);
         if (database == 0) {
             open(consumer);
         } else {
-            Jedis jedis = resources.getResource();
-            try {
+            Preconditions.checkArgument(database > 0);
+            try (Jedis jedis = resources.getResource()) {
                 jedis.select(database);
                 consumer.accept(jedis);
-            } finally {
-                jedis.select(0);
-                jedis.close();
             }
         }
     }
