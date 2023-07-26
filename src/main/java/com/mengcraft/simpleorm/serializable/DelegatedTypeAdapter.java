@@ -151,12 +151,12 @@ public class DelegatedTypeAdapter<T> extends TypeAdapter<T> {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <R> R deserialize(JsonElement json, Type typeOfT) throws JsonParseException {
+        public Object deserialize(JsonElement json, Type typeOfT) throws JsonParseException {
+            // delegate if same type, otherwise stackoverflow
+            if (typeOfT == typeToken.getType()) {
+                return delegate().fromJsonTree(json);
+            }
             return gson.fromJson(json, typeOfT);
-        }
-
-        protected T delegated(JsonElement json) {
-            return delegate().fromJsonTree(json);
         }
     }
 }

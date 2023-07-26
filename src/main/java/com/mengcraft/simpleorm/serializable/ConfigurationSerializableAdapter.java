@@ -22,8 +22,7 @@ public class ConfigurationSerializableAdapter implements JsonSerializer<Configur
         Class<ConfigurationSerializable> cls = (Class<ConfigurationSerializable>) type;
         IDeserializer deserializer = SerializableTypes.asDeserializer(cls);
         if (deserializer == GsonDeserializer.INSTANCE) {
-            // bypass to next Adapter
-            return ((DelegatedTypeAdapter<ConfigurationSerializable>.GsonContextImpl) context).delegated(element);
+            return context.deserialize(element, type);
         }
         return (ConfigurationSerializable) deserializer.deserialize(cls, (Map<String, Object>) GsonUtils.dump(element));
     }

@@ -14,7 +14,7 @@ public class MultilineFlexibleDeserializer implements JsonDeserializer<Iterable<
     @Override
     public Iterable<?> deserialize(JsonElement element, Type type, JsonDeserializationContext context) throws JsonParseException {
         if (element.isJsonArray()) {
-            return ((DelegatedTypeAdapter<Iterable>.GsonContextImpl) context).delegated(element);
+            return context.deserialize(element, type);
         } else if (element.isJsonObject()) {
             return wrap(element, type, context);
         } else if (element.isJsonPrimitive()) {
