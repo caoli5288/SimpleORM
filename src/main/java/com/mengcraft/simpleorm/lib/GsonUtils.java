@@ -14,10 +14,9 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import com.mengcraft.simpleorm.serializable.CustomTypeAdapter;
-import com.mengcraft.simpleorm.serializable.GsonDeserializer;
-import com.mengcraft.simpleorm.serializable.IDeserializer;
-import com.mengcraft.simpleorm.serializable.SerializableTypes;
+import com.mengcraft.simpleorm.serializable.ConfigurationSerializableAdapter;
+import com.mengcraft.simpleorm.serializable.DelegatedTypeAdapter;
+import com.mengcraft.simpleorm.serializable.MultilineFlexibleDeserializer;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 
 import java.lang.reflect.Field;
@@ -26,7 +25,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -67,8 +65,8 @@ public class GsonUtils {
 
     public static Gson createJsonInBuk(FieldNamingPolicy policy) {
         GsonBuilder b = new GsonBuilder();
-        b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new CustomSerializer()));
-        b.registerTypeAdapterFactory(CustomTypeAdapter.newTypeHierarchyFactory(Collection.class, new MultilineTextDeserializer()));
+        b.registerTypeAdapterFactory(DelegatedTypeAdapter.newTypeHierarchyFactory(ConfigurationSerializable.class, new ConfigurationSerializableAdapter()));
+        b.registerTypeAdapterFactory(DelegatedTypeAdapter.newTypeHierarchyFactory(Iterable.class, new MultilineFlexibleDeserializer()));
         // jsr310s
         b.registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer());
         b.registerTypeAdapter(LocalDate.class, new LocalDateSerializer());
@@ -78,25 +76,6 @@ public class GsonUtils {
             b.setFieldNamingPolicy(policy);
         }
         return b.create();
-    }
-
-    public static class CustomSerializer implements JsonSerializer<ConfigurationSerializable>, JsonDeserializer<ConfigurationSerializable> {
-
-        public JsonElement serialize(ConfigurationSerializable input, Type clz, JsonSerializationContext ctx) {
-            return ctx.serialize(input.serialize());
-        }
-
-        public ConfigurationSerializable deserialize(JsonElement element, Type type, JsonDeserializationContext ctx) throws JsonParseException {
-            if (!element.isJsonObject()) {
-                return null;
-            }
-            Class<ConfigurationSerializable> cls = (Class<ConfigurationSerializable>) type;
-            IDeserializer deserializer = SerializableTypes.asDeserializer(cls);
-            if (deserializer == GsonDeserializer.INSTANCE) {// delegate to defaults
-                return null;
-            }
-            return (ConfigurationSerializable) deserializer.deserialize(cls, (Map<String, Object>) dump(element));
-        }
     }
 
     public static class LocalDateTimeSerializer implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {

@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.MavenLibs;
@@ -20,8 +21,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -191,6 +196,12 @@ public class ORM extends JavaPlugin {
 
     public static <T> T deserialize(Class<T> clz, Map<String, Object> map) {
         return (T) SerializableTypes.asDeserializer(clz).deserialize(clz, map);
+    }
+
+    @NotNull
+    public static <T> T deserialize(@NotNull Class<T> cls, @NotNull File file) throws FileNotFoundException {
+        Map<String, Object> load = Utils.YAML.load(Files.newReader(file, StandardCharsets.UTF_8));
+        return deserialize(cls, load);
     }
 
     public static <T> T attr(Player player, @NonNull String key) {

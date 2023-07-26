@@ -24,44 +24,49 @@ import java.lang.reflect.Type;
  * @param <T> the bean type
  * @author caoli5288@gmail.com
  */
-public class CustomTypeAdapter<T> extends TypeAdapter<T> {
+public class DelegatedTypeAdapter<T> extends TypeAdapter<T> {
 
     private final JsonSerializer<T> serializer;
     private final JsonDeserializer<T> deserializer;
     private final Gson gson;
     private final TypeToken<T> typeToken;
     private final GsonContextImpl context = new GsonContextImpl();
-    private final TypeAdapter<T> delegate;
+    private final TypeAdapterFactory skipPast;
+    private volatile TypeAdapter<T> delegate;
 
-    public CustomTypeAdapter(JsonSerializer<T> serializer, JsonDeserializer<T> deserializer,
-                             Gson gson, TypeToken<T> typeToken, TypeAdapterFactory skipPast) {
+    public DelegatedTypeAdapter(JsonSerializer<T> serializer, JsonDeserializer<T> deserializer,
+                                Gson gson, TypeToken<T> typeToken, TypeAdapterFactory skipPast) {
         this.serializer = serializer;
         this.deserializer = deserializer;
         this.gson = gson;
         this.typeToken = typeToken;
-        this.delegate = gson.getDelegateAdapter(skipPast, typeToken);
+        this.skipPast = skipPast;
+    }
+
+    protected TypeAdapter<T> delegate() {
+        // A race might lead to `delegate` being assigned by multiple threads but the last assignment will stick
+        TypeAdapter<T> d = delegate;
+        return d != null
+                ? d
+                : (delegate = gson.getDelegateAdapter(skipPast, typeToken));
     }
 
     @Override
     public T read(JsonReader in) throws IOException {
         if (deserializer == null) {
-            return delegate.read(in);
+            return delegate().read(in);
         }
         JsonElement value = Streams.parse(in);
         if (value.isJsonNull()) {
             return null;
         }
-        T deserialized = deserializer.deserialize(value, typeToken.getType(), context);
-        if (deserialized == null) {
-            deserialized = delegate.fromJsonTree(value);
-        }
-        return deserialized;
+        return deserializer.deserialize(value, typeToken.getType(), context);
     }
 
     @Override
     public void write(JsonWriter out, T value) throws IOException {
         if (serializer == null) {
-            delegate.write(out, value);
+            delegate().write(out, value);
             return;
         }
         if (value == null) {
@@ -127,13 +132,13 @@ public class CustomTypeAdapter<T> extends TypeAdapter<T> {
                     ? exactType.equals(type) || matchRawType && exactType.getType() == type.getRawType()
                     : hierarchyType.isAssignableFrom(type.getRawType());
             return matches
-                    ? new CustomTypeAdapter<>((JsonSerializer<T>) serializer,
+                    ? new DelegatedTypeAdapter<>((JsonSerializer<T>) serializer,
                     (JsonDeserializer<T>) deserializer, gson, type, this)
                     : null;
         }
     }
 
-    private final class GsonContextImpl implements JsonSerializationContext, JsonDeserializationContext {
+    protected final class GsonContextImpl implements JsonSerializationContext, JsonDeserializationContext {
         @Override
         public JsonElement serialize(Object src) {
             return gson.toJsonTree(src);
@@ -148,6 +153,10 @@ public class CustomTypeAdapter<T> extends TypeAdapter<T> {
         @Override
         public <R> R deserialize(JsonElement json, Type typeOfT) throws JsonParseException {
             return gson.fromJson(json, typeOfT);
+        }
+
+        protected T delegated(JsonElement json) {
+            return delegate().fromJsonTree(json);
         }
     }
 }
