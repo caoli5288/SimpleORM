@@ -1,43 +1,38 @@
 package com.mengcraft.simpleorm;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.bukkit.Bukkit;
+import io.netty.channel.DefaultEventLoopGroup;
+import io.netty.channel.EventLoop;
 
 import java.io.Closeable;
-import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FluxWorkers implements Executor, Closeable {
 
-    private final ServerWorker serverWorker = new ServerWorker();
     private final int size;
-    private final List<ExecutorService> executors;
-    private final AtomicInteger num = new AtomicInteger();
+    private final EventLoop[] executors;
+    private final DefaultEventLoopGroup elg;
 
     public FluxWorkers(int size) {
         this.size = size;
-        executors = Lists.newArrayListWithCapacity(size);
+        executors = new EventLoop[size];
         ThreadFactory factory = new ThreadFactoryBuilder()
                 .setNameFormat("ORM-Workers-%s")
                 .build();
+        elg = new DefaultEventLoopGroup(size, factory);
         for (int i = 0; i < size; i++) {
-            executors.add(Executors.newSingleThreadExecutor(factory));
+            executors[i] = elg.next();
         }
     }
 
     public Executor ofServer() {
-        return serverWorker;
+        return ORM.plugin;
     }
 
     public Executor of() {
-        return executors.get(num.getAndIncrement() % size);
+        return elg.next();
     }
 
     public Executor of(String ns) {
@@ -45,7 +40,7 @@ public class FluxWorkers implements Executor, Closeable {
     }
 
     public Executor of(int i) {
-        return executors.get((i & Integer.MAX_VALUE) % size);
+        return executors[(i & Integer.MAX_VALUE) % size];
     }
 
     @Override
@@ -55,26 +50,10 @@ public class FluxWorkers implements Executor, Closeable {
 
     @Override
     public void close() {
-        for (ExecutorService service : executors) {
-            service.shutdown();
-        }
+        elg.shutdownGracefully();
     }
 
     public void awaitClose(long mills) throws InterruptedException {
-        for (ExecutorService service : executors) {
-            Preconditions.checkState(service.awaitTermination(mills, TimeUnit.MILLISECONDS));
-        }
-    }
-
-    public static class ServerWorker implements Executor {
-
-        @Override
-        public void execute(Runnable command) {
-            if (Bukkit.isPrimaryThread()) {
-                command.run();
-            } else {
-                Bukkit.getScheduler().runTask(ORM.plugin, command);
-            }
-        }
+        elg.awaitTermination(mills, TimeUnit.MILLISECONDS);
     }
 }

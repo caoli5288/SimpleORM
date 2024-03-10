@@ -32,11 +32,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
 @ExtensionMethod(Utils.class)
-public class ORM extends JavaPlugin {
+public class ORM extends JavaPlugin implements Executor {
 
     public static final String PLAYER_METADATA_KEY = "ORM_METADATA";
     private static final int MAXIMUM_SIZE = Math.min(20, Runtime.getRuntime().availableProcessors() + 1);
@@ -292,5 +293,14 @@ public class ORM extends JavaPlugin {
 
     public static <T> CompletableFuture<T> sync(Supplier<T> supplier) {
         return Utils.enqueue(workers.ofServer(), supplier);
+    }
+
+    @Override
+    public void execute(@NotNull Runnable command) {
+        if (Bukkit.isPrimaryThread()) {
+            command.run();
+        } else {
+            Bukkit.getScheduler().runTask(plugin, command);
+        }
     }
 }

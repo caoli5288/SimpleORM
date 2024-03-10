@@ -3,15 +3,13 @@ package com.mengcraft.simpleorm.cluster;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.mengcraft.simpleorm.FluxWorkers;
 import com.mengcraft.simpleorm.ORM;
 import com.mengcraft.simpleorm.RedisWrapper;
 import com.mengcraft.simpleorm.lib.Utils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.EventLoop;
 import io.netty.util.ReferenceCountUtil;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -21,10 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -39,7 +34,7 @@ public class ClusterSystem {
     private final Map<Class<? extends Handler>, Deploy> deployMap = Maps.newHashMap();
     private final AtomicInteger status = new AtomicInteger();
     final RedisWrapper jedis = ORM.globalRedisWrapper();
-    private ListeningScheduledExecutorService executor;
+    private EventLoop executor;
     @Getter
     private long id;
 
@@ -53,9 +48,7 @@ public class ClusterSystem {
 
     public CompletableFuture<ClusterSystem> start() {
         Preconditions.checkState(status.compareAndSet(0, 1));
-        executor = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
-                .setNameFormat("simple-cluster-" + name)
-                .build()));
+        executor = (EventLoop) executors.of();// It's now event-loop
         return Utils.enqueue(executor, () -> {
             init();
             return this;
@@ -97,7 +90,6 @@ public class ClusterSystem {
                 .thenRun(() -> {
                     jedis.unsubscribe("cluster:" + name + ":" + id);
                     listenerMap.forEach((listener, list) -> jedis.unsubscribe("cluster:" + name + ":0:" + listener));
-                    MoreExecutors.shutdownAndAwaitTermination(executor, 1, TimeUnit.MINUTES);
                 });
     }
 
@@ -204,7 +196,7 @@ public class ClusterSystem {
 
     public CompletableFuture<Handler> deploy(Handler handler) {
         Preconditions.checkState(status() == 1);
-        Executor bind = executors.of();
+        EventLoop bind = (EventLoop) executors.of();
         return Utils.enqueue(executor, () -> init(handler))
                 .thenApplyAsync(result -> result.init(this, bind), bind);
     }
@@ -228,7 +220,7 @@ public class ClusterSystem {
         return handler;
     }
 
-    ListeningScheduledExecutorService executor() {
+    EventLoop executor() {
         return executor;
     }
 

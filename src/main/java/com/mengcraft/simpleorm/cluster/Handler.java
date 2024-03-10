@@ -3,8 +3,9 @@ package com.mengcraft.simpleorm.cluster;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.ListenableScheduledFuture;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.EventLoop;
+import io.netty.util.concurrent.Promise;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,6 +20,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public abstract class Handler {
 
@@ -28,13 +30,13 @@ public abstract class Handler {
     // 1: running
     // 2: closed
     private final AtomicInteger status = new AtomicInteger();
-    Executor executor;
+    EventLoop executor;
     private ClusterSystem system;
     @Getter
     @Setter(AccessLevel.PACKAGE)
     private long id;
 
-    final Handler init(ClusterSystem system, Executor executor) {
+    final Handler init(ClusterSystem system, EventLoop executor) {
         Preconditions.checkState(status.compareAndSet(0, 1));
         this.system = system;
         this.executor = executor;
@@ -68,26 +70,29 @@ public abstract class Handler {
         return system.jedis.call(function);
     }
 
-    protected void execute(Runnable command) {
-        executor.execute(command);
+    protected CompletableFuture<?> execute(Runnable command) {
+        return CompletableFuture.runAsync(command, executor);
+    }
+
+    protected <T> CompletableFuture<T> execute(Supplier<T> command) {
+        return CompletableFuture.supplyAsync(command, executor);
     }
 
     protected ScheduledFuture<?> schedule(Runnable command, TimeUnit unit, long delay) {
-        return handle(system.executor().schedule(() -> execute(command), delay, unit));
+        Preconditions.checkState(status.get() == 1, "Handler is closed");
+        return handle(executor.schedule(command, delay, unit));
     }
 
-    protected ScheduledFuture<?> schedule(Runnable command, TimeUnit unit, long delay, long repeat) {
-        return handle(system.executor().scheduleWithFixedDelay(() -> execute(command), delay, repeat, unit));
+    protected ScheduledFuture<?> schedule(Runnable command, TimeUnit unit, long initDelay, long delay) {
+        Preconditions.checkState(status.get() == 1, "Handler is closed");
+        return handle(executor.scheduleWithFixedDelay(command, initDelay, delay, unit));
     }
 
-    private ListenableScheduledFuture<?> handle(ListenableScheduledFuture<?> task) {
+    private ScheduledFuture<?> handle(ScheduledFuture<?> task) {
         UUID taskId = UUID.randomUUID();
         tasks.put(taskId, task);
-        task.addListener(() -> {
-            if (status() == 1) {
-                tasks.remove(taskId);
-            }
-        }, executor);
+        // Cast it
+        ((Promise<?>) task).addListener(f -> tasks.remove(taskId));
         return task;
     }
 
@@ -97,6 +102,10 @@ public abstract class Handler {
 
     public CompletableFuture<Long> publish(String subject, ByteBuf msg) {
         return system.publish(this, subject, msg);
+    }
+
+    protected Executor executor() {
+        return executor;
     }
 
     public int status() {

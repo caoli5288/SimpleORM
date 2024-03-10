@@ -29,7 +29,7 @@
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
+            <artifactId>netty-all</artifactId>
             <version>4.1.80.Final</version>
             <scope>provided</scope>
         </dependency>
