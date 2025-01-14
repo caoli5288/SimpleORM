@@ -9,8 +9,12 @@
 
     <repositories>
         <repository>
-            <id>i7mc</id>
-            <url>https://repo.i7mc.com/maven2</url>
+            <id>codemc-public</id>
+            <url>https://repo.codemc.io/repository/maven-public/</url>
+        </repository>
+        <repository>
+            <id>codemc-nms</id>
+            <url>https://repo.codemc.io/repository/nms/</url>
         </repository>
     </repositories>
 

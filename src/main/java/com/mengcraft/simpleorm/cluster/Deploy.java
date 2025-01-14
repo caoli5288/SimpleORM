@@ -11,21 +11,29 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class Deploy extends Handler {
-
+    // Constants
+    // States
+    public static final int STATE_INIT = 0;
+    public static final int STATE_RUNNING = 1;
+    public static final int STATE_CLOSED = 2;
+    // Protocols
+    // Init: <byte: header>
+    public static final int PROTO_INIT = 0;
+    public static final int PROTO_INIT_REPLY = 1;
+    public static final int PROTO_SYNC = 2;
+    // Fields
     private final DeployOptions options;
     private final Map<Long, Long> aliveMap = Maps.newHashMap();
     private final Map<Long, Handler> deployMap = Maps.newHashMap();
-    private final Class<? extends Handler> deployCls;
+    private final Class<? extends Handler> cls;
     private Consensus consensus;
     private String msgChannel;
-    // 0: init
-    // 1: running
-    // 2: closed
-    private int state;
+    private int state = STATE_INIT;
 
-    Deploy(Class<? extends Handler> deployCls, DeployOptions options) {
+
+    Deploy(Class<? extends Handler> cls, DeployOptions options) {
         Preconditions.checkArgument(options.valid());
-        this.deployCls = deployCls;
+        this.cls = cls;
         this.options = options;
     }
 
@@ -34,28 +42,27 @@ public class Deploy extends Handler {
         msgChannel = "deploy:" + options.getName();
         listen(msgChannel).thenRun(() -> {
             init0();
-            int keepAlive = options.getKeepAlive();
-            schedule(this::onRun, TimeUnit.SECONDS, keepAlive, keepAlive);
+            long ttl = options.getTtl();
+            schedule(this::onRun, TimeUnit.SECONDS, ttl, ttl);
         });
     }
 
     @Override
     protected void onClose() {
-        state = 2;
+        state = STATE_CLOSED;
         deployMap.values().forEach(Handler::close);
     }
 
     private void init0() {
         ByteBuf data = Unpooled.buffer();
-        data.writeByte(0);
+        data.writeByte(PROTO_INIT);
         publish(msgChannel, data).thenAccept(num -> {
-            if (num <= 1) {
-                state = 1;
+            if (num <= 1) {// At least 1 because includes self
+                state = STATE_RUNNING;
                 onRun();
             } else {
                 consensus = new Consensus();
-                consensus.total = num.intValue();
-                consensus.reply = 1;
+                consensus.total = num.intValue() - 1;
             }
         });
     }
@@ -70,96 +77,108 @@ public class Deploy extends Handler {
     }
 
     private void onRunning() {
-        // publish heartbeat
         if (!deployMap.isEmpty()) {
-            deployMap.values().removeIf(obj -> obj.status() == 2);
+            deployMap.values().removeIf(obj -> obj.status() == STATE_CLOSED);
             if (!deployMap.isEmpty()) {
-                ByteBuf data = Unpooled.buffer();
-                data.writeByte(2);
-                data.writeShort(deployMap.size());
-                deployMap.keySet().forEach(data::writeLong);
-                publish(msgChannel, data);
+                doMsgSync();
             }
         }
         // clean timeout
         if (!aliveMap.isEmpty()) {
             long t = System.currentTimeMillis();
-            aliveMap.values().removeIf(last -> (t - last) / 1000 > options.getDeadline());
+            long ttl = options.getTtl() * 2500;
+            aliveMap.values().removeIf(last -> (t - last) > ttl);
         }
-        int upSize = options.getCount() - aliveMap.size() - deployMap.size();
-        if (upSize > 0) {
-            // Simply use redis lock instead of Rift
-            jedis(jedis -> {
-                String deploy = String.format("cluster:%s:deploy:%s:deploying", system().getName(), options.getName());
-                String set = jedis.set(deploy,
-                        String.valueOf(getId()),
-                        SetParams.setParams().nx().ex(options.getKeepAlive() / 2));// lock half keepAlive time
-                if ("OK".equals(set)) {
-                    deploy(upSize);
-                }
-                return set;
-            });
+        int deployNum = options.getDeployPerNode() - deployMap.size();
+        if (deployNum > 0) {
+            int maxDeployNum = options.getDeploy() - deployMap.size() - aliveMap.size();
+            if (maxDeployNum > 0) {
+                deploy(Math.min(deployNum, maxDeployNum));
+            }
         }
     }
 
+    private void doMsgSync() {
+        ByteBuf data = Unpooled.buffer();
+        data.writeByte(PROTO_SYNC);
+        data.writeShort(deployMap.size());
+        deployMap.keySet().forEach(data::writeLong);
+        publish(msgChannel, data);
+    }
+
     @SneakyThrows
-    private void deploy(int depSize) {
-        int limitSize = deployMap.size() + depSize;
-        for (int i = 0; i < depSize; i++) {
-            system().deploy(deployCls.newInstance()).thenAcceptAsync(instance -> deploy0(instance, limitSize), executor);
-        }
+    private void deploy(int deployNum) {
+        jedis(jedis -> {
+            String key = String.format("cluster:%s:deploy:%s:deploying", system().getName(), options.getName());
+            String locked = jedis.set(key,
+                    String.valueOf(getId()),
+                    SetParams.setParams().nx().ex(options.getTtl() / 2));// lock half keepAlive time
+            if ("OK".equals(locked)) {
+                int tSize = deployMap.size() + deployNum;
+                for (int i = 0; i < deployNum; i++) {
+                    system().deploy(newHandler()).thenAcceptAsync(instance -> deploy0(instance, tSize), executor);
+                }
+            }
+            return locked;
+        });
+    }
+
+    @SneakyThrows
+    private Handler newHandler() {
+        return cls.newInstance();
     }
 
     private void deploy0(Handler instance, int limitSize) {
         deployMap.put(instance.getId(), instance);
         if (deployMap.size() >= limitSize) {
-            onRunning();
+            doMsgSync();
         }
     }
 
     @Override
     protected void onMessage(String subject, HandlerId sender, ByteBuf msg) {
-        if (sender.getId() == getId()) {// no reply self message
-            return;
-        }
-        byte act = msg.readByte();
-        if (act == 0) {// sync
-            onSync(sender);
-        } else if (act == 1) {// sync reply
-            onReply(msg);
-        } else if (act == 2) {// heartbeat
-            onHeartbeat(msg);
+        if (sender.getId() != getId()) {// no reply self message
+            byte id = msg.readByte();
+            if (id == PROTO_INIT) {// sync
+                onMsgInit(sender);
+            } else if (id == PROTO_INIT_REPLY) {// sync reply
+                onMsgInitReply(msg);
+            } else if (id == PROTO_SYNC) {
+                onMsgSync(msg);
+            }
         }
     }
 
-    private void onHeartbeat(ByteBuf msg) {
+    private void onMsgSync(ByteBuf msg) {
         int len = msg.readShort();
         for (int i = 0; i < len; i++) {
             aliveMap.put(msg.readLong(), System.currentTimeMillis());
         }
     }
 
-    private void onReply(ByteBuf msg) {
-        byte mState = msg.readByte();
-        if (mState == 1) {
-            int len = msg.readShort();
-            for (int i = 0; i < len; i++) {
-                aliveMap.put(msg.readLong(), System.currentTimeMillis());
+    private void onMsgInitReply(ByteBuf msg) {
+        if (state == STATE_INIT) {
+            if (msg.readByte() == 1) {
+                int len = msg.readShort();
+                for (int i = 0; i < len; i++) {
+                    aliveMap.put(msg.readLong(), System.currentTimeMillis());
+                }
             }
-        }
-        consensus.reply++;
-        // check fully done
-        if (consensus.reply >= consensus.total) {
-            state = 1;
-            onRun();
+            consensus.reply++;
+            // check fully done
+            if (consensus.reply >= consensus.total) {
+                consensus = null;
+                state = STATE_RUNNING;
+                onRun();
+            }
         }
     }
 
-    private void onSync(HandlerId sender) {
+    private void onMsgInit(HandlerId sender) {
         ByteBuf data = Unpooled.buffer();
-        data.writeByte(1);
+        data.writeByte(PROTO_INIT_REPLY);
         data.writeByte(state);
-        if (state == 1) {
+        if (state == STATE_RUNNING) {
             data.writeShort(deployMap.size());
             deployMap.keySet().forEach(data::writeLong);
         }

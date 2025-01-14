@@ -10,13 +10,15 @@ public class DeployOptions {
 
     private String name;
     @Builder.Default
-    private int count = 1;
+    private int deploy = 1;
     @Builder.Default
-    private int keepAlive = 7;
+    private int deployPerNode = 1;
     @Builder.Default
-    private int deadline = 17;
+    private long ttl = 7;
+    @Builder.Default
+    private long consensusTimeout = 1000;
 
     public boolean valid() {
-        return !Utils.isNullOrEmpty(name) && count > 0 && keepAlive > 0 && deadline > 0 && keepAlive < (deadline / 2);
+        return !Utils.isNullOrEmpty(name) && deploy > 0 && ttl > 0 && deployPerNode > 0 && consensusTimeout > 200;
     }
 }
