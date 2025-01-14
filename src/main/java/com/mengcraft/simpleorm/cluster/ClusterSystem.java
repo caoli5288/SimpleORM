@@ -124,7 +124,7 @@ public class ClusterSystem {
             Handler handler = handlerMap.get(handlerId);
             if (handler != null) {
                 HandlerId senderId = new HandlerId(msg.readLong(), msg.readLong());
-                handler.execute(() -> handler.onMessage("", senderId, msg));
+                handler.execute(() -> handler.onMessage("", senderId, msg)).exceptionally(handler::exceptionally);
             }
         });
     }
@@ -141,7 +141,7 @@ public class ClusterSystem {
                     HandlerId senderId = new HandlerId(msg.readLong(), msg.readLong());
                     for (Handler handler : list) {
                         ByteBuf copy = msg.copy();
-                        handler.execute(() -> handler.onMessage(subject, senderId, copy));
+                        handler.execute(() -> handler.onMessage(subject, senderId, copy)).exceptionally(handler::exceptionally);
                     }
                 }
             });
@@ -189,7 +189,7 @@ public class ClusterSystem {
             HandlerId senderId = new HandlerId(id, sender.getId());
             ByteBuf copy = Unpooled.copiedBuffer(msg);// non-pooled heap copy
             ReferenceCountUtil.safeRelease(msg);
-            handler.execute(() -> handler.onMessage("", senderId, copy));
+            handler.execute(() -> handler.onMessage("", senderId, copy)).exceptionally(handler::exceptionally);
         }
         return sender;
     }

@@ -15,10 +15,8 @@ public class DeployOptions {
     private int deployPerNode = 1;
     @Builder.Default
     private long ttl = 7;
-    @Builder.Default
-    private long consensusTimeout = 1000;
 
     public boolean valid() {
-        return !Utils.isNullOrEmpty(name) && deploy > 0 && ttl > 0 && deployPerNode > 0 && consensusTimeout > 200;
+        return !Utils.isNullOrEmpty(name) && deploy > 0 && ttl > 0 && deployPerNode > 0;
     }
 }

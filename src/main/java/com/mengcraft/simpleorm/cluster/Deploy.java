@@ -23,7 +23,7 @@ public class Deploy extends Handler {
     public static final int PROTO_SYNC = 2;
     // Fields
     private final DeployOptions options;
-    private final Map<Long, Long> aliveMap = Maps.newHashMap();
+    private final Map<Long, Info> aliveMap = Maps.newHashMap();// <DeployId, Num>
     private final Map<Long, Handler> deployMap = Maps.newHashMap();
     private final Class<? extends Handler> cls;
     private Consensus consensus;
@@ -87,22 +87,30 @@ public class Deploy extends Handler {
         if (!aliveMap.isEmpty()) {
             long t = System.currentTimeMillis();
             long ttl = options.getTtl() * 2500;
-            aliveMap.values().removeIf(last -> (t - last) > ttl);
+            aliveMap.values().removeIf(info -> (t - info.t) > ttl);
         }
         int deployNum = options.getDeployPerNode() - deployMap.size();
         if (deployNum > 0) {
-            int maxDeployNum = options.getDeploy() - deployMap.size() - aliveMap.size();
+            int maxDeployNum = options.getDeploy() - allDeployments();
             if (maxDeployNum > 0) {
                 deploy(Math.min(deployNum, maxDeployNum));
             }
         }
     }
 
+    public int allDeployments() {
+        int val = deployMap.size();
+        // remotes
+        for (Info info : aliveMap.values()) {
+            val += info.deployments;
+        }
+        return val;
+    }
+
     private void doMsgSync() {
         ByteBuf data = Unpooled.buffer();
         data.writeByte(PROTO_SYNC);
         data.writeShort(deployMap.size());
-        deployMap.keySet().forEach(data::writeLong);
         publish(msgChannel, data);
     }
 
@@ -142,27 +150,28 @@ public class Deploy extends Handler {
             if (id == PROTO_INIT) {// sync
                 onMsgInit(sender);
             } else if (id == PROTO_INIT_REPLY) {// sync reply
-                onMsgInitReply(msg);
+                onMsgInitReply(sender, msg);
             } else if (id == PROTO_SYNC) {
-                onMsgSync(msg);
+                onMsgSync(sender, msg);
             }
         }
     }
 
-    private void onMsgSync(ByteBuf msg) {
-        int len = msg.readShort();
-        for (int i = 0; i < len; i++) {
-            aliveMap.put(msg.readLong(), System.currentTimeMillis());
-        }
+    private void onMsgSync(HandlerId handlerId, ByteBuf msg) {
+        // short: deploy num
+        long deployId = handlerId.getId();
+        Info info = new Info();
+        info.deployments = msg.readUnsignedShort();
+        aliveMap.put(deployId, info);
     }
 
-    private void onMsgInitReply(ByteBuf msg) {
+    private void onMsgInitReply(HandlerId handlerId, ByteBuf msg) {
         if (state == STATE_INIT) {
-            if (msg.readByte() == 1) {
-                int len = msg.readShort();
-                for (int i = 0; i < len; i++) {
-                    aliveMap.put(msg.readLong(), System.currentTimeMillis());
-                }
+            if (msg.readByte() == STATE_RUNNING) {
+                long deployId = handlerId.getId();
+                Info info = new Info();
+                info.deployments = msg.readUnsignedShort();
+                aliveMap.put(deployId, info);
             }
             consensus.reply++;
             // check fully done
@@ -180,7 +189,6 @@ public class Deploy extends Handler {
         data.writeByte(state);
         if (state == STATE_RUNNING) {
             data.writeShort(deployMap.size());
-            deployMap.keySet().forEach(data::writeLong);
         }
         sendMessage(sender, data);
     }
@@ -189,5 +197,10 @@ public class Deploy extends Handler {
 
         private int total;
         private int reply;
+    }
+
+    static class Info {
+        private final long t = System.currentTimeMillis();
+        private int deployments;
     }
 }

@@ -70,7 +70,7 @@ public abstract class Handler {
         return system.jedis.call(function);
     }
 
-    protected CompletableFuture<?> execute(Runnable command) {
+    protected CompletableFuture<Void> execute(Runnable command) {
         return CompletableFuture.runAsync(command, executor);
     }
 
@@ -106,6 +106,11 @@ public abstract class Handler {
 
     protected Executor executor() {
         return executor;
+    }
+
+    protected Void exceptionally(Throwable throwable) {
+        // no-ops by default
+        return null;
     }
 
     public int status() {
