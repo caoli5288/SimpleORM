@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -57,17 +56,16 @@ public class ClusterSystem {
 
     CompletableFuture<Handler> close(Handler handler) {
         if (status() == 2) {
-            return Utils.enqueue(handler.executor, () -> Utils.let(handler, Handler::onClose));
+            return Utils.enqueue(handler.executor, handler::doClose)
+                    .exceptionally(th -> Utils.let(handler, it -> it.exceptionally(th)));
         }
         return Utils.enqueue(executor, () -> doClose(handler))
-                .thenApplyAsync(obj -> Utils.let(obj, Handler::onClose), handler.executor);
+                .thenApplyAsync(Handler::doClose, handler.executor)
+                .exceptionally(th -> Utils.let(handler, it -> it.exceptionally(th)));
     }
 
     private Handler doClose(Handler handler) {
         handlerMap.remove(handler.getId());
-        for (ScheduledFuture<?> future : handler.tasks.values()) {
-            future.cancel(false);
-        }
         for (String listener : handler.listeners) {
             List<Handler> list = listenerMap.get(listener);
             list.remove(handler);

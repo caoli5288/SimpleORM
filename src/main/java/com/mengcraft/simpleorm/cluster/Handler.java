@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 
 public abstract class Handler {
 
-    final Map<UUID, ScheduledFuture<?>> tasks = Maps.newConcurrentMap();// async call safe
+    final Map<UUID, ScheduledFuture<?>> tasks = Maps.newHashMap();
     final Set<String> listeners = Sets.newHashSet();
     // 0: init
     // 1: running
@@ -60,6 +60,14 @@ public abstract class Handler {
     public CompletableFuture<Handler> close() {
         Preconditions.checkState(status.compareAndSet(1, 2));
         return system.close(this);
+    }
+
+    final Handler doClose() {
+        for (ScheduledFuture<?> value : tasks.values()) {
+            value.cancel(false);
+        }
+        onClose();
+        return this;
     }
 
     protected void onMessage(String subject, HandlerId sender, ByteBuf msg) {
