@@ -82,6 +82,11 @@ public class ORM extends JavaPlugin implements Executor {
         } catch (ClassNotFoundException e) {
             MavenLibs.of("redis.clients:jedis:3.8.0").load();
         }
+        try {
+            Class.forName("com.mongodb.MongoClient");
+        } catch (ClassNotFoundException e) {
+            MavenLibs.of("org.mongodb:mongo-java-driver:3.12.14").load();
+        }
         plugin.getLogger().info("ORM lib load okay!");
     }
 
