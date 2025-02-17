@@ -1,7 +1,7 @@
 package com.mengcraft.simpleorm;
 
 import com.mengcraft.simpleorm.mongo.IMongoCodec;
-import com.mengcraft.simpleorm.mongo.LegacyMongoCodec;
+import com.mengcraft.simpleorm.mongo.MongoCodecs;
 import com.mengcraft.simpleorm.mongo.MongoResourceManager;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -64,7 +64,7 @@ public class MongoWrapper implements Closeable {
     }
 
     public MongoDatabaseWrapper open(String database, String collection) {
-        return open(database, collection, LegacyMongoCodec.getInstance());
+        return open(database, collection, MongoCodecs.BSON);
     }
 
     public MongoDatabaseWrapper open(String database, String collection, IMongoCodec serializer) {
