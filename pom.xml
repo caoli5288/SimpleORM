@@ -18,6 +18,13 @@
         </repository>
     </repositories>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>i7mc-snapshots</id>
+            <url>https://repo.i7mc.com/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.jetbrains</groupId>
