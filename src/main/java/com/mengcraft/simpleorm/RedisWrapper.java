@@ -70,6 +70,7 @@ public class RedisWrapper implements Closeable {
     @Override
     @SneakyThrows
     public void close() {
+        unsubscribeAll();
         resources.close();
     }
 

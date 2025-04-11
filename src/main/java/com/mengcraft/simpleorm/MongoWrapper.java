@@ -64,7 +64,7 @@ public class MongoWrapper implements Closeable {
     }
 
     public MongoDatabaseWrapper open(String database, String collection) {
-        return open(database, collection, MongoCodecs.BSON);
+        return open(database, collection, MongoCodecs.LEGACY);
     }
 
     public MongoDatabaseWrapper open(String database, String collection, IMongoCodec serializer) {

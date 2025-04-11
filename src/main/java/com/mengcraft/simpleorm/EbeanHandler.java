@@ -214,7 +214,7 @@ public class EbeanHandler {
         if (!(server == null)) {
             throw new DatabaseException("Already initialized!");
         }
-        if (mapping.size() < 1) {
+        if (mapping.isEmpty()) {
             throw new DatabaseException("Not define entity class!");
         }
 
@@ -384,7 +384,8 @@ public class EbeanHandler {
             val i = clz.getDeclaredConstructor(DefaultServer.class);
             i.setAccessible(true);
             ((Runnable) i.newInstance(server)).run();
-            if (dataSource instanceof HikariDataSource && !((HikariDataSource) dataSource).getPoolName().equals("simple_shared")) {// Never shutdown shared
+            if (dataSource instanceof HikariDataSource &&
+                    ((HikariDataSource) dataSource).getPoolName().equals(name)) {// Never shutdown shared
                 ((HikariDataSource) dataSource).close();
             }
             if (managed) {
