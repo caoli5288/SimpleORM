@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -205,9 +205,11 @@ public class ORM extends JavaPlugin implements Executor {
     }
 
     @NotNull
-    public static <T> T deserialize(@NotNull Class<T> cls, @NotNull File file) throws FileNotFoundException {
-        Map<String, Object> load = Utils.YAML.load(Files.newReader(file, StandardCharsets.UTF_8));
-        return deserialize(cls, load);
+    public static <T> T deserialize(@NotNull Class<T> cls, @NotNull File file) throws IOException {
+        try (java.io.BufferedReader buff = Files.newReader(file, StandardCharsets.UTF_8)) {
+            Map<String, Object> load = Utils.YAML.load(buff);
+            return deserialize(cls, load);
+        }
     }
 
     public static <T> T attr(Player player, @NonNull String key) {
