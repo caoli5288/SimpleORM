@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.mengcraft.simpleorm.driver.DatabaseDriverRegistry;
 import com.mengcraft.simpleorm.driver.IDatabaseDriver;
 import com.mengcraft.simpleorm.lib.Utils;
 import com.zaxxer.hikari.HikariDataSource;
@@ -26,7 +27,7 @@ public class DataSourceOptions {
     public HikariDataSource asDataSource(String poolName) {
         HikariDataSource ds = new HikariDataSource();
         ds.setPoolName(poolName);
-        ds.setJdbcUrl(IDatabaseDriver.filter(jdbcUrl));
+        ds.setJdbcUrl(DatabaseDriverRegistry.filter(jdbcUrl));
         ds.setUsername(username);
         ds.setPassword(password);
         ds.setMinimumIdle(1);

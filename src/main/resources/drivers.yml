@@ -1,0 +1,11 @@
+mysql:
+  library: mysql:mysql-connector-java:jar:5.1.49
+  driver: com.mysql.jdbc.Driver
+
+h2:
+  library: com.h2database:h2:2.3.232
+  driver: org.h2.Driver
+
+postgresql:
+  library: org.postgresql:postgresql:42.7.7
+  driver: org.postgresql.Driver

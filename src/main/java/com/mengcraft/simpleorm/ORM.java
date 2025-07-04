@@ -3,6 +3,9 @@ package com.mengcraft.simpleorm;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
+import com.mengcraft.simpleorm.driver.ConfiguredDatabaseDriver;
+import com.mengcraft.simpleorm.driver.DatabaseDriverRegistry;
+import com.mengcraft.simpleorm.driver.DatabaseDriverInfo;
 import com.mengcraft.simpleorm.lib.GsonUtils;
 import com.mengcraft.simpleorm.lib.MavenLibs;
 import com.mengcraft.simpleorm.lib.Utils;
@@ -24,6 +27,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -63,6 +67,23 @@ public class ORM extends JavaPlugin implements Executor {
                 EbeanManager.DEFAULT,
                 this,
                 ServicePriority.Normal);
+    }
+
+    @Override
+    @SneakyThrows
+    public void saveDefaultConfig() {
+        super.saveDefaultConfig();
+        File f = new File(getDataFolder(), "drivers.yml");
+        if (!f.exists()) {
+            saveResource("drivers.yml", false);
+        }
+        try (BufferedReader load = Files.newReader(f, StandardCharsets.UTF_8)) {
+            Map<String, Map<String, Object>> loadMap = Utils.YAML.load(load);
+            for (Map.Entry<String, Map<String, Object>> let : loadMap.entrySet()) {
+                DatabaseDriverInfo info = ORM.deserialize(DatabaseDriverInfo.class, let.getValue());
+                DatabaseDriverRegistry.register(new ConfiguredDatabaseDriver(let.getKey(), info));
+            }
+        }
     }
 
     public static void loadLibrary(JavaPlugin plugin) {
@@ -206,7 +227,7 @@ public class ORM extends JavaPlugin implements Executor {
 
     @NotNull
     public static <T> T deserialize(@NotNull Class<T> cls, @NotNull File file) throws IOException {
-        try (java.io.BufferedReader buff = Files.newReader(file, StandardCharsets.UTF_8)) {
+        try (BufferedReader buff = Files.newReader(file, StandardCharsets.UTF_8)) {
             Map<String, Object> load = Utils.YAML.load(buff);
             return deserialize(cls, load);
         }
