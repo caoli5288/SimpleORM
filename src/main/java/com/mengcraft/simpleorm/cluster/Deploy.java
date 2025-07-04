@@ -8,7 +8,9 @@ import lombok.SneakyThrows;
 import redis.clients.jedis.params.SetParams;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class Deploy extends Handler {
     // Constants
@@ -120,12 +122,15 @@ public class Deploy extends Handler {
             String key = String.format("cluster:%s:deploy:%s:deploying", system().getName(), options.getName());
             String locked = jedis.set(key,
                     String.valueOf(getId()),
-                    SetParams.setParams().nx().ex(options.getTtl() / 2));// lock half keepAlive time
+                    SetParams.setParams().nx().ex(options.getTtl()));// lock half keepAlive time
             if ("OK".equals(locked)) {
-                int tSize = deployMap.size() + deployNum;
-                for (int i = 0; i < deployNum; i++) {
-                    system().deploy(newHandler()).thenAcceptAsync(instance -> deploy0(instance, tSize), executor);
-                }
+                CompletableFuture<?>[] list = IntStream.range(0, deployNum)
+                        .mapToObj(l -> system().deploy(newHandler())
+                                .thenAcceptAsync(deployed -> deployMap.put(deployed.getId(), deployed), executor))
+                        .toArray(CompletableFuture[]::new);
+                CompletableFuture.allOf(list)
+                        .thenRunAsync(this::doMsgSync, executor)
+                        .whenCompleteAsync((__, t) -> jedis.del(key));
             }
             return locked;
         });
@@ -134,13 +139,6 @@ public class Deploy extends Handler {
     @SneakyThrows
     private Handler newHandler() {
         return cls.newInstance();
-    }
-
-    private void deploy0(Handler instance, int limitSize) {
-        deployMap.put(instance.getId(), instance);
-        if (deployMap.size() >= limitSize) {
-            doMsgSync();
-        }
     }
 
     @Override
