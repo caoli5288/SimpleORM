@@ -95,7 +95,7 @@ public class Deploy extends Handler {
         if (deployNum > 0) {
             int maxDeployNum = options.getDeploy() - allDeployments();
             if (maxDeployNum > 0) {
-                deploy(Math.min(deployNum, maxDeployNum));
+                deploy();
             }
         }
     }
@@ -117,22 +117,43 @@ public class Deploy extends Handler {
     }
 
     @SneakyThrows
-    private void deploy(int deployNum) {
+    private void deploy() {
         jedis(jedis -> {
             String key = String.format("cluster:%s:deploy:%s:deploying", system().getName(), options.getName());
             String locked = jedis.set(key,
                     String.valueOf(getId()),
                     SetParams.setParams().nx().ex(options.getTtl()));// lock half keepAlive time
             if ("OK".equals(locked)) {
-                CompletableFuture<?>[] list = IntStream.range(0, deployNum)
-                        .mapToObj(l -> system().deploy(newHandler())
-                                .thenAcceptAsync(deployed -> deployMap.put(deployed.getId(), deployed), executor))
-                        .toArray(CompletableFuture[]::new);
-                CompletableFuture.allOf(list)
-                        .thenRunAsync(this::doMsgSync, executor)
-                        .whenCompleteAsync((__, t) -> jedis.del(key));
+                // Delayed to avoid race condition
+                executor.schedule(() -> deploy(key), 0, TimeUnit.MILLISECONDS);
             }
             return locked;
+        });
+    }
+
+    private int deploy(String key) {
+        int deployNum = options.getDeployPerNode() - deployMap.size();
+        if (deployNum > 0) {
+            int maxDeployNum = options.getDeploy() - allDeployments();
+            if (maxDeployNum > 0) {
+                return onDeploy(key, Math.min(deployNum, maxDeployNum));
+            }
+        }
+        // No deployments, release deploy key
+        jedis(jedis -> jedis.del(key));
+        return 0;
+    }
+
+    private int onDeploy(String key, int deployNum) {
+        return jedis(jedis -> {
+            CompletableFuture<?>[] list = IntStream.range(0, deployNum)
+                    .mapToObj(l -> system().deploy(newHandler())
+                            .thenAcceptAsync(deployed -> deployMap.put(deployed.getId(), deployed), executor))
+                    .toArray(CompletableFuture[]::new);
+            CompletableFuture.allOf(list)
+                    .thenRunAsync(this::doMsgSync, executor)
+                    .whenCompleteAsync((__, t) -> jedis.del(key));
+            return deployNum;
         });
     }
 
