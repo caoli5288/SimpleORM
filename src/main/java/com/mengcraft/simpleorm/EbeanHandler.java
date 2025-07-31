@@ -218,7 +218,7 @@ public class EbeanHandler {
             throw new DatabaseException("Not define entity class!");
         }
 
-        PolicyInjector.inject();// Hacked in forge server
+//        PolicyInjector.inject();// Hacked in forge server
 
         if (dataSource == null) {
             dataSource = ORM.getDataSourceProvider().getDataSource(this);

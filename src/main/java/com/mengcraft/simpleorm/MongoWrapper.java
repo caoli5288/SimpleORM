@@ -8,12 +8,13 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoClientURI;
-import com.mongodb.MongoOptions;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.gridfs.GridFS;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.Closeable;
@@ -32,8 +33,13 @@ public class MongoWrapper implements Closeable {
     @SneakyThrows
     MongoWrapper(MongoClientURI url) {
         client = new MongoClient(url);
-        MongoOptions options = client.getMongoOptions();
-        options.setSocketKeepAlive(true);// force keep-alive
+    }
+
+    public static MongoWrapper create(String url, ConfigurationSection mongo) {
+        MongoClientOptions.Builder options = MongoClientOptions.builder()
+                .connectionsPerHost(mongo.getInt("connections-per-host", 10))
+                .connectTimeout(mongo.getInt("connect-timeout", 10000));
+        return new MongoWrapper(new MongoClientURI(url, options));
     }
 
     @Override

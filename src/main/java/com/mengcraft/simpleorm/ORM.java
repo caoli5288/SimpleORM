@@ -126,7 +126,7 @@ public class ORM extends JavaPlugin implements Executor {
         if (nil(globalMongoWrapper)) {
             String url = getConfig().getString("mongo.url", "");
             if (!url.isEmpty()) {
-                globalMongoWrapper = MongoWrapper.b(url);
+                globalMongoWrapper = MongoWrapper.create(url, getConfig().getConfigurationSection("mongo"));
             }
         }
         getLogger().info("Welcome!");
