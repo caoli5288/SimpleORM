@@ -6,5 +6,6 @@ redis:
 
 mongo:
   url: mongodb://localhost
+#  connections-per-host: 10
 
 cpus: 8

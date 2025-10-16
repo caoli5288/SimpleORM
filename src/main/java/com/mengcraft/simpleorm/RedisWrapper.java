@@ -263,6 +263,12 @@ public class RedisWrapper implements Closeable {
             FIELD_PUB_SUB_client.set(this, client);
         }
 
+        @Override
+        public void unsubscribe() {
+            consumers.clear();
+            super.unsubscribe();
+        }
+
         void execute() {
             executor.execute(() -> {
                 while (!consumers.isEmpty()) {
