@@ -61,6 +61,9 @@ public class ORM extends JavaPlugin implements Executor {
     private static IDataSourceProvider dataSourceProvider;
     @Getter
     private static FluxWorkers workers;
+    @Getter
+    static boolean vtDefault;
+    private static Enqueuer enqueuer;
 
     @Override
     public void onLoad() {
@@ -140,6 +143,11 @@ public class ORM extends JavaPlugin implements Executor {
         getConfig().getKeys(false).stream()
                         .filter(l -> l.startsWith("mongo") && validAliases(getConfig().getStringList(l + ".aliases")))
                                 .forEach(l -> loadMongodbAliases(l, loadMongodb(getConfig().getConfigurationSection(l)), getConfig().getStringList(l + ".aliases")));
+        // init enqueuer
+        vtDefault = getConfig().getBoolean("vtDefault") && FluxWorkers.isVtEnabled();
+        getLogger().info("vtDefault=" + vtDefault);
+        enqueuer = vtDefault ? workers.ofVirtualEnqueuer() : workers.ofEnqueuer();
+
         getLogger().info("Welcome!");
     }
 
@@ -374,19 +382,19 @@ public class ORM extends JavaPlugin implements Executor {
     }
 
     public static CompletableFuture<Void> enqueue(Runnable runnable) {
-        return Utils.enqueue(workers.of(), runnable);
+        return enqueuer.enqueue(runnable);
     }
 
     public static CompletableFuture<Void> enqueue(String ns, Runnable runnable) {
-        return Utils.enqueue(workers.of(ns), runnable);
+        return enqueuer.enqueue(ns, runnable);
     }
 
     public static <T> CompletableFuture<T> enqueue(Supplier<T> supplier) {
-        return Utils.enqueue(workers.of(), supplier);
+        return enqueuer.enqueue(supplier);
     }
 
     public static <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
-        return Utils.enqueue(workers.of(ns), supplier);
+        return enqueuer.enqueue(ns, supplier);
     }
 
     public static CompletableFuture<Void> sync(Runnable runnable) {

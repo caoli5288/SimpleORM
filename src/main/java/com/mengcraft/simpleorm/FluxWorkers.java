@@ -2,6 +2,7 @@ package com.mengcraft.simpleorm;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.mengcraft.simpleorm.lib.Types;
+import com.mengcraft.simpleorm.lib.Utils;
 import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoop;
 import lombok.SneakyThrows;
@@ -10,9 +11,11 @@ import java.io.Closeable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 public class FluxWorkers implements Executor, Closeable {
@@ -20,10 +23,16 @@ public class FluxWorkers implements Executor, Closeable {
     private final int size;
     private final EventLoop[] executors;
     private final DefaultEventLoopGroup elg;
+    private final Executor[] vtPool;
+    private int vts;// It's safe to use un-threadsafe indexer
     private static MethodHandle vtHandle;
 
     static {
         loadVtHandle();
+    }
+
+    public static boolean isVtEnabled() {
+        return vtHandle != null;
     }
 
     public FluxWorkers(int size) {
@@ -35,6 +44,14 @@ public class FluxWorkers implements Executor, Closeable {
         elg = new DefaultEventLoopGroup(size, factory);
         for (int i = 0; i < size; i++) {
             executors[i] = elg.next();
+        }
+        vtPool = new Executor[size];
+        if (isVtEnabled()) {
+            for (int i = 0; i < size; i++) {
+                vtPool[i] = ofVirtual(executors[i]);
+            }
+        } else {
+            System.arraycopy(executors, 0, vtPool, 0, size);
         }
     }
 
@@ -73,15 +90,15 @@ public class FluxWorkers implements Executor, Closeable {
     }
 
     public Executor ofVirtual() {
-        return ofVirtual(of());
+        return ofVirtual(vts++);
     }
 
     public Executor ofVirtual(String plugin) {
-        return ofVirtual(of(plugin));
+        return ofVirtual(plugin.hashCode());
     }
 
     public Executor ofVirtual(int slot) {
-        return ofVirtual(of(slot));
+        return vtPool[(slot & Integer.MAX_VALUE) % size];
     }
 
     public Executor ofVirtual(Executor handle) {
@@ -110,5 +127,54 @@ public class FluxWorkers implements Executor, Closeable {
 
     public void awaitClose(long mills) throws InterruptedException {
         elg.awaitTermination(mills, TimeUnit.MILLISECONDS);
+    }
+
+    // Enqueuer
+    public Enqueuer ofEnqueuer() {
+        return new Enqueuer() {
+            @Override
+            public CompletableFuture<Void> enqueue(Runnable runnable) {
+                return Utils.enqueue(of(), runnable);
+            }
+
+            @Override
+            public CompletableFuture<Void> enqueue(String ns, Runnable runnable) {
+                return Utils.enqueue(of(ns), runnable);
+            }
+
+            @Override
+            public <T> CompletableFuture<T> enqueue(Supplier<T> supplier) {
+                return Utils.enqueue(of(), supplier);
+            }
+
+            @Override
+            public <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
+                return Utils.enqueue(of(ns), supplier);
+            }
+        };
+    }
+
+    public Enqueuer ofVirtualEnqueuer() {
+        return new Enqueuer() {
+            @Override
+            public CompletableFuture<Void> enqueue(Runnable runnable) {
+                return Utils.enqueue(ofVirtual(), runnable);
+            }
+
+            @Override
+            public CompletableFuture<Void> enqueue(String ns, Runnable runnable) {
+                return Utils.enqueue(ofVirtual(ns), runnable);
+            }
+
+            @Override
+            public <T> CompletableFuture<T> enqueue(Supplier<T> supplier) {
+                return Utils.enqueue(ofVirtual(), supplier);
+            }
+
+            @Override
+            public <T> CompletableFuture<T> enqueue(String ns, Supplier<T> supplier) {
+                return Utils.enqueue(ofVirtual(ns), supplier);
+            }
+        };
     }
 }

@@ -23,3 +23,6 @@ mongodb2:
     - PluginUseDb2
 
 cpus: 8
+
+# let ORM.enqueue use virtual pool as default
+vtDefault: false

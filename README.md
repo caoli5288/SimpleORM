@@ -2,14 +2,28 @@
 A Bukkit plugin provides a central ORM Manager. It have no reload issue from
 Bukkit's build-in ORM support.
 
-## Usage
-Put it into your server's plugin folder, and start your server,
-or package source into your own plugin(not recommend).
-This is a sample project [xKit](https://github.com/caoli5288/xKit).
+## Features
 
-## Developer
-If you want to use this library in your own plugin. code your main
-class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
+-   **Centralized ORM**: Manage your database connections through a central plugin, avoiding reload issues.
+-   **Ebean Integration**: Leverages the powerful Ebean ORM for easy database operations.
+-   **Virtual Thread Support**: Optionally use Java 21+ virtual threads for highly efficient I/O-bound tasks.
+-   **Redis Integration**: Includes a Redis wrapper for distributed caching and messaging.
+-   **Serialization**: Provides a simple serializer based on Gson with Bukkit objects and JSR310 support.
+-   **Distributed L2 Cache**: Implements a distributed cache layer on top of Redis.
+
+## Usage
+
+1.  Put the SimpleORM plugin jar into your server's `/plugins` folder.
+2.  Start your server. A configuration folder `/plugins/SimpleORM` will be created.
+3.  Configure your database in the `config.yml` file.
+4.  SimpleORM will be available as a service for other plugins to use.
+
+For a sample implementation, see the [xKit](https://github.com/caoli5288/xKit) project.
+
+## Basic Database Setup
+
+If you want to use this library in your own plugin. code your main class like this. See [Ebean ORM](http://avaje.org/ebean/documentation.html)
+
 ```java
 public class MyPlugin extends JavaPlugin {
     
