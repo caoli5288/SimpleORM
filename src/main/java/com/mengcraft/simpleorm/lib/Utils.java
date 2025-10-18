@@ -163,4 +163,8 @@ public class Utils {
         }
         return jedis;
     }
+
+    public static boolean isNotEmpty(String l) {
+        return !isNullOrEmpty(l);
+    }
 }

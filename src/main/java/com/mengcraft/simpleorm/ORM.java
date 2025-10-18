@@ -1,6 +1,7 @@
 package com.mengcraft.simpleorm;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.mengcraft.simpleorm.driver.ConfiguredDatabaseDriver;
@@ -19,9 +20,11 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.experimental.ExtensionMethod;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -33,8 +36,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
@@ -49,6 +54,8 @@ public class ORM extends JavaPlugin implements Executor {
     private static final ThreadLocal<Gson> JSON_LAZY = ThreadLocal.withInitial(GsonUtils::createJsonInBuk);
     private static RedisWrapper globalRedisWrapper;
     private static MongoWrapper globalMongoWrapper;
+    private static Map<String, RedisWrapper> redisAliases;
+    private static Map<String, MongoWrapper> mongodbAliases;
     private static volatile DataSource sharedDs;
     static ORM plugin;
     private static IDataSourceProvider dataSourceProvider;
@@ -117,19 +124,72 @@ public class ORM extends JavaPlugin implements Executor {
         new MetricsLite(this);
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
         if (nil(globalRedisWrapper)) {
-            String redisUrl = getConfig().getString("redis.url");
-            if (!Utils.isNullOrEmpty(redisUrl)) {
-                int max = getConfig().getInt("redis.max_conn", -1);
-                globalRedisWrapper = new RedisWrapper(RedisProviders.of(getConfig().getString("redis.master_name"), redisUrl, max, getConfig().getString("redis.password")));
-            }
+            globalRedisWrapper = loadRedis(getConfig().getConfigurationSection("redis"));
         }
         if (nil(globalMongoWrapper)) {
-            String url = getConfig().getString("mongo.url", "");
-            if (!url.isEmpty()) {
-                globalMongoWrapper = MongoWrapper.create(url, getConfig().getConfigurationSection("mongo"));
+            globalMongoWrapper = loadMongodb(getConfig().getConfigurationSection("mongo"));
+        }
+        // init aliases
+        // redis
+        redisAliases = Maps.newHashMap();
+        getConfig().getKeys(false).stream()
+                .filter(l -> l.startsWith("redis") && validAliases(getConfig().getStringList(l + ".aliases")))
+                .forEach(l -> loadRedisAliases(l, loadRedis(getConfig().getConfigurationSection(l)), getConfig().getStringList(l + ".aliases")));
+        // mongodb
+        mongodbAliases = Maps.newHashMap();
+        getConfig().getKeys(false).stream()
+                        .filter(l -> l.startsWith("mongo") && validAliases(getConfig().getStringList(l + ".aliases")))
+                                .forEach(l -> loadMongodbAliases(l, loadMongodb(getConfig().getConfigurationSection(l)), getConfig().getStringList(l + ".aliases")));
+        getLogger().info("Welcome!");
+    }
+
+    static void loadMongodbAliases(String key, MongoWrapper alias, List<String> list) {
+        if (alias == null) {
+            // log
+            plugin.getLogger().log(Level.WARNING, String.format("Mongodb %s is invalid", key));
+        } else {
+            for (String line : list) {
+                mongodbAliases.put(line, alias);
+                plugin.getLogger().info(String.format("Configured mongodb alias %s to %s", line, key));
             }
         }
-        getLogger().info("Welcome!");
+    }
+
+    static boolean validAliases(List<String> list) {
+        if (list.isEmpty()) {
+            return false;
+        }
+        return list.stream()
+                .anyMatch(l -> Bukkit.getPluginManager().getPlugin(l) != null);
+    }
+
+    static void loadRedisAliases(String key, RedisWrapper alias, List<String> list) {
+        if (alias == null) {
+            // log
+            plugin.getLogger().log(Level.WARNING, String.format("Redis %s is invalid", key));
+        } else {
+            for (String line : list) {
+                redisAliases.put(line, alias);
+                plugin.getLogger().info(String.format("Configured redis alias %s to %s", line, key));
+            }
+        }
+    }
+
+    static MongoWrapper loadMongodb(ConfigurationSection cfg) {
+        String url = cfg.getString("url");
+        if (Utils.isNotEmpty(url)) {
+            return MongoWrapper.create(url, cfg);
+        }
+        return null;
+    }
+
+    static RedisWrapper loadRedis(ConfigurationSection cfg) {
+        String url = cfg.getString("url");
+        if (Utils.isNotEmpty(url)) {
+            int max = cfg.getInt("max_conn", -1);
+            return new RedisWrapper(RedisProviders.of(cfg.getString("master_name"), url, max, cfg.getString("password")));
+        }
+        return null;
     }
 
     @Override
@@ -148,6 +208,10 @@ public class ORM extends JavaPlugin implements Executor {
             it.close();
             globalMongoWrapper = null;
         });
+        redisAliases.forEach((__, l) -> l.close());
+        redisAliases = null;
+        mongodbAliases.forEach((__, l) -> l.close());
+        mongodbAliases = null;
     }
 
     public static boolean nil(Object any) {
@@ -168,6 +232,16 @@ public class ORM extends JavaPlugin implements Executor {
 
     public static MongoWrapper globalMongoWrapper() {
         return Objects.requireNonNull(globalMongoWrapper);
+    }
+
+    public static RedisWrapper getRedisWrapper(@NotNull Plugin pl) {
+        return Optional.ofNullable(redisAliases.get(pl.getName()))
+                .orElse(globalRedisWrapper());
+    }
+
+    public static MongoWrapper getMongoWrapper(@NotNull Plugin pl) {
+        return Optional.ofNullable(mongodbAliases.get(pl.getName()))
+                .orElse(globalMongoWrapper());
     }
 
     public static EbeanHandler getDataHandler(JavaPlugin plugin) {

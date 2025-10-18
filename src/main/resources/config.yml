@@ -8,4 +8,18 @@ mongo:
   url: mongodb://localhost
 #  connections-per-host: 10
 
+redis2:
+  master_name: null
+  url: redis://db2.example.com:6380
+  max_conn: 20
+  password: null
+  aliases:
+    - PluginUseDb2
+
+mongodb2:
+  url: mongodb://db2.example.com:27018
+  connections-per-host: 10
+  aliases:
+    - PluginUseDb2
+
 cpus: 8
