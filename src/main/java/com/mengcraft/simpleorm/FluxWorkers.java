@@ -5,7 +5,9 @@ import com.mengcraft.simpleorm.lib.Types;
 import com.mengcraft.simpleorm.lib.Utils;
 import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoop;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.lang.invoke.MethodHandle;
@@ -107,12 +109,10 @@ public class FluxWorkers implements Executor, Closeable {
             ORM.plugin.getLogger().log(Level.WARNING, "VirtualThreads not supported.", new UnsupportedOperationException("ofVirtual(Executor)"));
             return handle;
         }
-        return t -> startVirtual(handle, t);
-    }
-
-    @SneakyThrows
-    static void startVirtual(Executor scheduler, Runnable task) {
-        ((Thread) vtHandle.invokeExact(scheduler, (String) null, 0, task)).start();
+        if (handle instanceof VirtualThreadPool) {
+            return handle;
+        }
+        return new VirtualThreadPool(handle);
     }
 
     @Override
@@ -127,6 +127,18 @@ public class FluxWorkers implements Executor, Closeable {
 
     public void awaitClose(long mills) throws InterruptedException {
         elg.awaitTermination(mills, TimeUnit.MILLISECONDS);
+    }
+
+    @RequiredArgsConstructor
+    private static class VirtualThreadPool implements Executor {
+
+        private final Executor jvmPool;
+
+        @Override
+        @SneakyThrows
+        public void execute(@NotNull Runnable command) {
+            ((Thread) vtHandle.invokeExact(jvmPool, (String) null, 0, command)).start();
+        }
     }
 
     // Enqueuer
