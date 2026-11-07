@@ -7,4 +7,6 @@ import javax.sql.DataSource;
 public interface IDataSourceProvider {
 
     DataSource getDataSource(EbeanHandler handler);
+
+    DataSource getDataSource(String db);
 }

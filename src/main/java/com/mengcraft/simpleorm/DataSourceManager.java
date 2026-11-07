@@ -14,6 +14,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 @ExtensionMethod(Utils.class)
 public class DataSourceManager implements IDataSourceProvider {
@@ -39,6 +40,12 @@ public class DataSourceManager implements IDataSourceProvider {
             handler.getPlugin().getLogger().warning("No explicit data source found, use default");
         }
         return ds;
+    }
+
+    @Override
+    public DataSource getDataSource(String db) {
+        return Optional.ofNullable(poolMap.get(db))
+                .orElseGet(() -> poolMap.get("default"));
     }
 
     @SneakyThrows
