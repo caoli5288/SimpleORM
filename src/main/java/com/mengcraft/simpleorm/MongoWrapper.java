@@ -95,6 +95,10 @@ public class MongoWrapper implements Closeable {
             collection.save(clsCodec.encode(bean));
         }
 
+        public <T> void save(T bean, DBObject query) {
+            collection.update(query, clsCodec.encode(bean), true, false);
+        }
+
         public <T> void save(T bean, Function<T, Object> ids) {
             DBObject serializer = this.clsCodec.encode(bean);
             serializer.put("_id", ids.apply(bean));
@@ -111,6 +115,14 @@ public class MongoWrapper implements Closeable {
             return container;
         }
 
+        public <T> void findAll(Class<T> clz, DBObject ref, Consumer<T> consumer) {
+            try (DBCursor cursor = collection.find(ref)) {
+                for (DBObject object : cursor) {
+                    consumer.accept(clsCodec.decode(clz, object));
+                }
+            }
+        }
+
         public <T> DBCursorWrapper<T> findLazy(Class<T> clz, DBObject ref) {
             DBCursor cursor = collection.find(ref);
             return new DBCursorWrapper<>(clz, cursor, clsCodec);
@@ -118,6 +130,14 @@ public class MongoWrapper implements Closeable {
 
         public <T> T find(Class<T> clz, DBObject find) {
             DBObject result = collection.findOne(find);
+            if (nil(result)) {
+                return null;
+            }
+            return clsCodec.decode(clz, result);
+        }
+
+        public <T> T find(Class<T> clz, DBObject find, DBObject projection) {
+            DBObject result = collection.findOne(find, projection);
             if (nil(result)) {
                 return null;
             }
@@ -138,7 +158,7 @@ public class MongoWrapper implements Closeable {
     }
 
     @RequiredArgsConstructor
-    public static class DBCursorWrapper<T> implements Iterator<T> {
+    public static class DBCursorWrapper<T> implements Iterator<T>, Closeable {
 
         private final Class<T> clz;
         private final DBCursor origin;
@@ -153,6 +173,11 @@ public class MongoWrapper implements Closeable {
         }
 
         protected void finalize() {// safe to memory leak
+            origin.close();
+        }
+
+        @Override
+        public void close() {
             origin.close();
         }
     }
